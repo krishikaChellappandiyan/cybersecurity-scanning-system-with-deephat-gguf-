@@ -3,8 +3,7 @@
 ![Python](https://img.shields.io/badge/Python-3.11-blue)
 ![Model](https://img.shields.io/badge/LLM-DeepHat-green)
 ![Inference](https://img.shields.io/badge/Inference-llama.cpp-orange)
-![Status](https://img.shields.io/badge/Status-Active-success)
-![License](https://img.shields.io/badge/License-MIT-lightgrey)
+
 
 An AI-powered passive website security analysis framework that combines **Hellhound Spider** with the **DeepHat Large Language Model (LLM)** to generate intelligent security assessments.
 
