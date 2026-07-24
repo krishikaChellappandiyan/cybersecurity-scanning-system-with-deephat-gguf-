@@ -1,0 +1,37 @@
+# Scan reports — auto-saved by spider, never commit
+hellhound_*.json
+*.jsonl
+
+# Explicit output files
+*.csv
+burp.xml
+
+# Credentials — never commit these
+cookies.txt
+*.cookie
+auth.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+
+# Playwright browser binaries
+.playwright/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
