@@ -186,14 +186,14 @@ This project builds upon several open-source projects and technologies.
 
 ### Hellhound Spider
 
+
 Hellhound provides the website crawling and passive reconnaissance capabilities, including endpoint discovery, technology fingerprinting, parameter extraction, JavaScript analysis, and security header collection.
 
 This project extends Hellhound by transforming crawler output into optimized LLM context and generating AI-assisted security assessments.
 
 Repository: [project-hellhound-org/Hellhound-Spider](https://github.com/project-hellhound-org/Hellhound-Spider)
 
-Author
-L4ZZ3RJ0D
+
 
 ### DeepHat
 
