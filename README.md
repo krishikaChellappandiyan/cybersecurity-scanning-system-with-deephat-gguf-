@@ -1,25 +1,16 @@
 # DeepHat Cybersecurity Assistant
 
-DeepHat Cybersecurity Assistant is an AI-powered website security analysis framework that integrates the **Hellhound Spider** crawler with the **DeepHat Large Language Model (LLM)** to perform intelligent passive security assessments.
+![Python](https://img.shields.io/badge/Python-3.11-blue)
+![Model](https://img.shields.io/badge/LLM-DeepHat-green)
+![Inference](https://img.shields.io/badge/Inference-llama.cpp-orange)
+![Status](https://img.shields.io/badge/Status-Active-success)
+![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
-The framework automatically crawls a target website, extracts security-relevant information, optimizes the crawler output for LLM consumption, and generates an AI-assisted security assessment. All analysis is performed locally using **DeepHat GGUF** running on **llama.cpp**.
+An AI-powered passive website security analysis framework that combines **Hellhound Spider** with the **DeepHat Large Language Model (LLM)** to generate intelligent security assessments.
 
----
+Instead of sending raw crawler output directly to an LLM, the framework extracts security-relevant evidence, builds an optimized context, and performs local AI inference using **DeepHat GGUF** running on **llama.cpp**.
 
-# Features
-
-- Automated website crawling using Hellhound Spider
-- Passive security assessment using DeepHat
-- Intelligent extraction of security-relevant crawler data
-- Optimized context generation for LLM inference
-- Local inference using DeepHat GGUF with `llama.cpp`
-- Automatic storage of crawler reports
-- Automatic storage of DeepHat analysis reports
-- Modular pipeline for future agent integration
-
----
-
-# Project Architecture
+# Architecture
 
 ```
                 Target URL
@@ -41,58 +32,11 @@ The framework automatically crawls a target website, extracts security-relevant 
                      │
                      ▼
         AI Security Assessment
-```
-
----
-
-# Project Structure
-
-```
-GGUF/
-│
-├── api/
-├── context/
-├── data/
-├── embedding/
-├── gguf/
-├── hellhound/
-├── ingestion/
-├── llama.cpp/
-├── models/
-│
-├── pipeline/
-│   └── crawler.py
-│
-├── processing/
-│   └── spider_extractor.py
-│
-├── retrieval/
-│
-├── retrieval_storage/
-│   ├── vector_db.py
-│   └── metadata_db.py
-│
-├── reports/
-│   ├── spiders/
-│   └── deephat/
-│
-├── storage/
-│   └── report_manager.py
-│
-├── chat.py
-├── deephat.py
-├── config.py
-├── main.py
-└── requirements.txt
-```
-
----
-
 # Workflow
 
-## 1. Crawl Target
+### 1. Website Crawling
 
-The user provides a target URL.
+A target URL is provided by the user.
 
 Example:
 
@@ -100,11 +44,13 @@ Example:
 https://example.com
 ```
 
+The framework launches Hellhound Spider to perform passive reconnaissance.
+
 ---
 
-## 2. Hellhound Spider
+### 2. Reconnaissance
 
-The crawler performs passive reconnaissance and generates a JSON report containing:
+Hellhound collects security-related information including:
 
 - Endpoints
 - Parameters
@@ -113,13 +59,13 @@ The crawler performs passive reconnaissance and generates a JSON report containi
 - Security Headers
 - Cookies
 - Authentication paths
-- JavaScript analysis
+- JavaScript resources
 - Robots.txt
 - Sitemap
 - Response metadata
 - Secrets (if detected)
 
-The generated crawler report is automatically stored in:
+Crawler reports are automatically stored in
 
 ```
 reports/spiders/
@@ -127,133 +73,41 @@ reports/spiders/
 
 ---
 
-## 3. Spider Extraction
+### 3. Spider Extraction
 
-Instead of sending the complete crawler output to the LLM, the framework extracts only the security-relevant information.
+Raw crawler output is usually too large for direct LLM inference.
 
-This significantly reduces the prompt size while preserving important security evidence.
-
----
-
-## 4. Context Builder
-
-The extracted information is converted into a structured summary optimized for LLM inference.
+SpiderExtractor filters and extracts only the security-relevant evidence required for analysis.
 
 ---
 
-## 5. DeepHat Analysis
+### 4. Context Generation
+
+The extracted information is transformed into an optimized structured context suitable for DeepHat.
+
+---
+
+### 5. AI Analysis
 
 DeepHat receives:
 
 - Optimized crawler context
 - User analysis prompt
 
-and generates an AI-assisted passive security assessment.
+and generates an AI-assisted passive security assessment
 
----
+Getting Started
+Prerequisites
+Python 3.11+
+Git
+A DeepHat GGUF model (downloaded separately from Hugging Face)
+llama.cpp (prebuilt Windows binaries are bundled under llama.cpp/; build your own on Linux/macOS)
 
-## 6. Report Storage
-
-DeepHat responses are automatically stored in JSON format.
-
-Location:
-
-```
-reports/deephat/
-```
-
-Example:
-
-```json
-{
-    "target": "https://example.com",
-    "timestamp": "20260724_143428",
-    "model": "DeepHat",
-    "response": "..."
-}
-```
-
----
-
-# Getting Started
-
-## Prerequisites
-
-- Python 3.11+
-- Git
-- Hellhound Spider
-- DeepHat GGUF model
-- llama.cpp
-
----
-
-## 1. Clone the Repository
-
-```bash
-git clone <repository-url>
-cd <repository-directory>
-```
-
----
-
-## 2. Create a Python Environment
-
-Using Conda (recommended):
-
-```bash
-conda create -n deephat python=3.11
-conda activate deephat
-```
-
-Or using venv:
-
-```bash
-python -m venv venv
-
-# Windows
-venv\Scripts\activate
-
-# Linux / macOS
-source venv/bin/activate
-```
-
----
-
-## 3. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
----
-
-## 4. Download the DeepHat Model
-
-Download the DeepHat GGUF model from Hugging Face.
-
-Repository:
-
-```
-VISHNUDHAT/DeepHat-V1-7B-Q4_K_M-GGUF
-```
-
-Place the model where `llama.cpp` can access it.
-
----
-
-# Running the Project
-
-## Step 1 – Start the DeepHat Server
-
-Open a terminal and navigate to the `llama.cpp` directory.
-
-```powershell
+Running the Project
+1. Start the DeepHat model server
+powershell
 cd <project-root>/llama.cpp
-```
 
-Start the DeepHat server:
-
-```powershell
 .\llama-server.exe `
   --hf-repo VISHNUDHAT/DeepHat-V1-7B-Q4_K_M-GGUF `
   --hf-file deephat-v1-7b-q4_k_m.gguf `
@@ -263,33 +117,14 @@ Start the DeepHat server:
   --cache-type-v q8_0 `
   --flash-attn on `
   --parallel 1
-```
 
-Wait until the model has finished loading.
 
-Keep this terminal running.
+2. Launch the application
 
----
+In a second terminal, from the project root:
 
-## Step 2 – Launch the Application
-
-Open another terminal.
-
-Navigate to the project root.
-
-```powershell
-cd <project-root>
-```
-
-Run:
-
-```powershell
+bash
 python chat.py
-```
-
-The application will display:
-
-```
 ============================================================
  DeepHat Cybersecurity Assistant
 ============================================================
@@ -299,35 +134,15 @@ Choose Mode
 1. Normal Chat
 2. Website Security Analysis
 3. Exit
-```
+Normal Chat — talk to DeepHat directly, no retrieval or scan context.
+Website Security Analysis — runs the full passive analysis pipeline described above.
 
----
+Alternatively, run python main.py for the RAG-grounded chat CLI, which answers from the local knowledge base in data/ and supports temporarily uploading your own JSON file for the session (upload <path> / unload / quit).
 
-## Step 3 – Website Security Analysis
-
-Select:
-
-```
-2
-```
-
-Enter the target URL:
-
-```
-https://example.com
-```
-
-Then provide an analysis prompt.
-
-Example:
-
-```
-Analyze the website for potential security vulnerabilities.
-```
-
-The framework executes the following pipeline:
-
-```
+Example Usage
+Choice : 2
+Target URL : https://example.com
+Analysis Prompt : Analyze the website for potential security vulnerabilities.
 Target URL
       │
       ▼
@@ -343,87 +158,44 @@ SpiderExtractor
 SpiderContextBuilder
       │
       ▼
-DeepHat
+    DeepHat
       │
       ▼
 AI Security Assessment
+
+
+# Acknowledgements
+
+This project builds upon several open-source projects and technologies.
+
+## Hellhound Spider
+
+Hellhound provides the website crawling and passive reconnaissance capabilities, including endpoint discovery, technology fingerprinting, parameter extraction, JavaScript analysis, and security header collection.
+
+This project extends Hellhound by transforming crawler output into optimized LLM context and generating AI-assisted security assessments.
+
+Repository:
+
+```
+https://github.com/project-hellhound-org/Hellhound-Spider
 ```
 
 ---
 
-# Application Modes
+## DeepHat
 
-## Normal Chat
+AI analysis is powered by the DeepHat Large Language Model running locally in GGUF format.
 
-Interact directly with DeepHat for general cybersecurity discussions.
-
----
-
-## Website Security Analysis
-
-Performs a complete passive security assessment using the crawler and DeepHat pipeline.
-
----
-
-# Generated Reports
-
-Crawler Reports
+Model:
 
 ```
-reports/spiders/
-```
-
-DeepHat Reports
-
-```
-reports/deephat/
-```
-
-Example:
-
-```
-reports/
-├── spiders/
-│   └── spider_<target>_<timestamp>.json
-│
-└── deephat/
-    └── deephat_<target>_<timestamp>.json
+https://huggingface.co/VISHNUDHAT/DeepHat-V1-7B-Q4_K_M-GGUF
 ```
 
 ---
 
-# Current Capabilities
+## llama.cpp
 
-- Passive website reconnaissance
-- Intelligent crawler output extraction
-- Context optimization for LLM inference
-- AI-assisted passive security analysis
-- Local inference using DeepHat GGUF
-- JSON report generation
-- Automatic report management
+Efficient local inference is provided by llama.cpp.
 
----
-
-# Planned Enhancements
-
-- Retrieval-Augmented Generation (RAG)
-- Planner module
-- SQL Injection validation agent
-- XSS validation agent
-- Authentication testing agent
-- IDOR validation agent
-- CSRF validation agent
-- Consolidated security report generation
-- Agent orchestration pipeline
-
----
-
-# Technologies Used
-
-- Python
-- Hellhound Spider
-- DeepHat LLM
-- GGUF
-- llama.cpp
-- JSON
-- Hugging Face
+https://github.com/ggml-org/llama.cpp
