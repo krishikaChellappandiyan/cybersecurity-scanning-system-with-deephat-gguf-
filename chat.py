@@ -4,12 +4,14 @@ from deephat import DeepHat
 from context.spider_context_builder import SpiderContextBuilder
 from processing.spider_extractor import SpiderExtractor
 from pipeline.crawler import HellhoundCrawler
+from storage.report_manager import ReportManager
 
 
 bot = DeepHat()
 crawler = HellhoundCrawler()
 extractor = SpiderExtractor()
 spider_context_builder = SpiderContextBuilder()
+report_manager = ReportManager()
 
 print("=" * 60)
 print(" DeepHat Cybersecurity Assistant")
@@ -111,6 +113,15 @@ Task
         print("\n================ DEEPHAT =================\n")
         print(answer)
         print("\n==========================================\n")
+
+        # Save only website security analysis reports
+        if choice == "2":
+            report_path = report_manager.save_deephat_report(
+                target=target,
+                response=answer
+            )
+
+            print(f"\nDeepHat report saved to:\n{report_path}")
 
     except Exception as e:
         print(f"\nDeepHat Error: {e}")
