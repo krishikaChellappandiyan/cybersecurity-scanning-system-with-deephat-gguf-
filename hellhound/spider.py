@@ -8508,7 +8508,16 @@ def _do_run(target: str, cfg: Config, emit,
     try:
         spider = Spider(target, cfg, emit, cookies, extra_headers)
         if sys.platform == "win32":
-            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+            # WindowsSelectorEventLoopPolicy cannot spawn subprocesses
+            # (asyncio.create_subprocess_exec raises NotImplementedError
+            # under it on Windows) — and that's exactly how Playwright
+            # launches Chromium for SPA mode. Only force Selector when
+            # Playwright is disabled; otherwise stay on the default
+            # Proactor policy so [SPA] can actually start the browser.
+            if cfg.use_playwright:
+                asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+            else:
+                asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
         if cfg.har_file:
             from pathlib import Path as _P
             if _P(cfg.har_file).exists():

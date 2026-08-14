@@ -1,0 +1,71 @@
+{
+  "agent": "Agent 36",
+  "report_type": "FULL_SCAN_REPORT",
+  "target": "https://bugcrowd.com/engagements/openai",
+  "scan_time": "2026-08-14T12:59:34.515934",
+  "endpoint_count": 1,
+  "total_results": 4,
+  "non_vulnerable_results": 4,
+  "results": [
+    {
+      "finding_id": "CAND-56861472c2",
+      "url": "https://bugcrowd.com/engagements/openai/api/internal/brand/theme/style-sheet?touch-point=SIGN_IN_PAGE&v=e63bfded9d58fea2e28876f5bb8d962fd52aea80a04070ee96c46a9e844f5c1224ffd7ec83903e4fe3f2afeaaa4839f8",
+      "method": "GET",
+      "path": "/api/internal/brand/theme/style-sheet?touch-point=SIGN_IN_PAGE&v=e63bfded9d58fea2e28876f5bb8d962fd52aea80a04070ee96c46a9e844f5c1224ffd7ec83903e4fe3f2afeaaa4839f8",
+      "sensitivity": "critical",
+      "description": "Flagged by DeepHat for AUTHZ validation",
+      "source": "deephat-targeted",
+      "probe_label": "No credentials",
+      "status_code": 301,
+      "finding": "REDIRECT",
+      "response_snippet": "",
+      "error": null,
+      "timestamp": "2026-08-14T12:59:29.472505"
+    },
+    {
+      "finding_id": "CAND-56861472c2",
+      "url": "https://bugcrowd.com/engagements/openai/api/internal/brand/theme/style-sheet?touch-point=SIGN_IN_PAGE&v=e63bfded9d58fea2e28876f5bb8d962fd52aea80a04070ee96c46a9e844f5c1224ffd7ec83903e4fe3f2afeaaa4839f8",
+      "method": "GET",
+      "path": "/api/internal/brand/theme/style-sheet?touch-point=SIGN_IN_PAGE&v=e63bfded9d58fea2e28876f5bb8d962fd52aea80a04070ee96c46a9e844f5c1224ffd7ec83903e4fe3f2afeaaa4839f8",
+      "sensitivity": "critical",
+      "description": "Flagged by DeepHat for AUTHZ validation",
+      "source": "deephat-targeted",
+      "probe_label": "Expired JWT token",
+      "status_code": 301,
+      "finding": "REDIRECT",
+      "response_snippet": "",
+      "error": null,
+      "timestamp": "2026-08-14T12:59:31.725988"
+    },
+    {
+      "finding_id": "CAND-56861472c2",
+      "url": "https://bugcrowd.com/engagements/openai/api/internal/brand/theme/style-sheet?touch-point=SIGN_IN_PAGE&v=e63bfded9d58fea2e28876f5bb8d962fd52aea80a04070ee96c46a9e844f5c1224ffd7ec83903e4fe3f2afeaaa4839f8",
+      "method": "GET",
+      "path": "/api/internal/brand/theme/style-sheet?touch-point=SIGN_IN_PAGE&v=e63bfded9d58fea2e28876f5bb8d962fd52aea80a04070ee96c46a9e844f5c1224ffd7ec83903e4fe3f2afeaaa4839f8",
+      "sensitivity": "critical",
+      "description": "Flagged by DeepHat for AUTHZ validation",
+      "source": "deephat-targeted",
+      "probe_label": "Invalid API key",
+      "status_code": 301,
+      "finding": "REDIRECT",
+      "response_snippet": "",
+      "error": null,
+      "timestamp": "2026-08-14T12:59:32.682484"
+    },
+    {
+      "finding_id": "CAND-56861472c2",
+      "url": "https://bugcrowd.com/engagements/openai/api/internal/brand/theme/style-sheet?touch-point=SIGN_IN_PAGE&v=e63bfded9d58fea2e28876f5bb8d962fd52aea80a04070ee96c46a9e844f5c1224ffd7ec83903e4fe3f2afeaaa4839f8",
+      "method": "GET",
+      "path": "/api/internal/brand/theme/style-sheet?touch-point=SIGN_IN_PAGE&v=e63bfded9d58fea2e28876f5bb8d962fd52aea80a04070ee96c46a9e844f5c1224ffd7ec83903e4fe3f2afeaaa4839f8",
+      "sensitivity": "critical",
+      "description": "Flagged by DeepHat for AUTHZ validation",
+      "source": "deephat-targeted",
+      "probe_label": "Fake session cookie",
+      "status_code": 301,
+      "finding": "REDIRECT",
+      "response_snippet": "",
+      "error": null,
+      "timestamp": "2026-08-14T12:59:33.547779"
+    }
+  ]
+}

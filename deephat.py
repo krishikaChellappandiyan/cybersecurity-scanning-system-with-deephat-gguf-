@@ -1,4 +1,6 @@
+import re
 import requests
+
 from config import (
     SERVER_URL,
     SYSTEM_PROMPT,
@@ -20,6 +22,21 @@ class DeepHat:
 
         self.messages = [self.system_message]
 
+    def reset(self):
+        """
+        Clear conversation history back to just the system message.
+
+        Each Website Security Analysis scan is a self-contained request —
+        DeepHat doesn't need (and shouldn't want) memory of a previous,
+        unrelated target's scan. Without this, self.messages accumulates
+        every prior scan's full spider-context prompt and JSON reply
+        (capped at MAX_HISTORY*2 messages, not by token count), so context
+        size — and therefore local inference time — grows with every scan
+        run in the same session, eventually exceeding even a generous
+        TIMEOUT on local hardware. Call this before each new scan.
+        """
+        self.messages = [self.system_message]
+
     def _trim_history(self):
 
         convo = self.messages[1:]
@@ -31,34 +48,30 @@ class DeepHat:
 
         self.messages = [self.system_message] + convo
 
-    def chat(self, prompt, context=None):
+    def _clean_response(self, text: str) -> str:
+        """
+        Remove Markdown code fences if the model returns:
 
-        # --------------------------------------------------
-        # Build user message
-        # --------------------------------------------------
+        ```json
+        {...}
+        ```
 
-        if context and context.strip():
+        Returns the cleaned JSON string.
+        """
 
-            user_content = f"""
-Context
+        text = text.strip()
 
-{context}
+        text = re.sub(r"^```(?:json)?", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"```$", "", text)
 
-==================================================
+        return text.strip()
 
-Question
-
-{prompt}
-"""
-
-        else:
-
-            user_content = prompt
+    def chat(self, prompt):
 
         self.messages.append(
             {
                 "role": "user",
-                "content": user_content
+                "content": prompt
             }
         )
 
@@ -68,7 +81,14 @@ Question
             "messages": self.messages,
             "temperature": TEMPERATURE,
             "max_tokens": MAX_TOKENS,
-            "stream": False
+            "stream": False,
+            # The system prompt forbids markdown/explanations in the
+            # output entirely, so any of these appearing means the model
+            # has already finished the JSON and started drifting — cut
+            # generation there instead of burning the rest of MAX_TOKENS
+            # on commentary (which has also been observed degenerating
+            # into repeated filler paragraphs until the token limit).
+            "stop": ["\n##", "\n```", "\n\n##", "## Explanation"]
         }
 
         try:
@@ -84,6 +104,8 @@ Question
             result = response.json()
 
             answer = result["choices"][0]["message"]["content"]
+
+            answer = self._clean_response(answer)
 
             self.messages.append(
                 {
@@ -103,7 +125,7 @@ Question
             except Exception:
                 print(response.text)
 
-            raise e
+            raise
 
         except requests.exceptions.RequestException as e:
 
