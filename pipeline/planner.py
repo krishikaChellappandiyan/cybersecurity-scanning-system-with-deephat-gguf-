@@ -32,7 +32,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 try:
     from pipeline.agent_capabilities import is_capability_mismatch
@@ -410,6 +410,49 @@ class Planner:
             for marker in cls._AUTH_ENTRY_PATH_SEGMENTS
         )
 
+    # sqli.py's CLI (agents/sql_agent/sqli.py) has no flag at all for
+    # specifying a POST body or method -- its "POST+JSON" testing is
+    # only reachable through its own --crawl auto-discovery mode, which
+    # this pipeline deliberately never uses (single-target --target mode
+    # only, to avoid exactly the kind of scope explosion this guard now
+    # prevents a different way). Confirmed real (steerwings.com
+    # enq_back.php, 2026-08-14): SQL_AGENT routed a POST candidate whose
+    # real evidenced parameter ("pid") lives in the request body, not the
+    # URL's query string. The wrapper has no way to pass that parameter
+    # to the tool, so it called sqli.py with a bare URL and no query
+    # string -- triggering the tool's "nothing specified, guess 10
+    # common params" fallback (the same fallback the word-boundary
+    # candidate-builder fix addressed for a different root cause) and a
+    # guaranteed 300s timeout, testing nothing. This isn't a one-off --
+    # every future POST-body candidate will hit this identically until
+    # the wrapper gains real POST-body support. Blocking it here is
+    # strictly better than the current behavior: UNSUPPORTED is an
+    # honest, immediate "can't test this yet," rather than a wasted
+    # 5-minute timeout that reports a misleading FAILED status.
+    @staticmethod
+    def _is_untestable_post_body_candidate(finding: Dict[str, Any], method: Any) -> bool:
+        if not isinstance(method, str) or method.upper() != "POST":
+            return False
+
+        parameter = finding.get("parameter")
+        if not parameter:
+            return False
+
+        endpoint = finding.get("endpoint")
+        if not isinstance(endpoint, str):
+            return True
+
+        try:
+            query_params = parse_qs(urlparse(endpoint).query)
+        except Exception:
+            return True
+
+        # If the evidenced parameter is ALSO present in the endpoint's
+        # own query string, sqli.py's normal query-string testing path
+        # still applies -- only block when the parameter is genuinely
+        # body-only.
+        return parameter not in query_params
+
     # config.py's SYSTEM_PROMPT explicitly tells DeepHat that a bare
     # "No_HTTPS" tls_audit entry is NOT a valid MITM_AGENT trigger on its
     # own — there's no TLS handshake for that agent's TLS-specific
@@ -447,7 +490,7 @@ class Planner:
 
         return real_issues.issubset({"No_HTTPS"})
 
-    # See pipeline/agent_capabilities.py for why this replaced a
+    # See agents/agent_capabilities.py for why this replaced a
     # hardcoded reactive blocklist: that approach only ever caught a
     # mismatch after someone had already observed it happen once
     # (confirmed cases: SSRF/Open Redirect routed to MITM_AGENT, cookie
@@ -595,6 +638,27 @@ class Planner:
                     f"entry point itself (login/signup/register page) — "
                     f"being reachable without prior auth is expected, "
                     f"correct behavior for this endpoint: {endpoint!r}"
+                ),
+                evidence=evidence,
+                method=method,
+            )
+
+        if agent == "SQL_AGENT" and self._is_untestable_post_body_candidate(finding, method):
+            return RoutingDecision(
+                finding_id=finding_id,
+                type=finding_type,
+                endpoint=endpoint,
+                agent=agent,
+                routed=False,
+                reason=(
+                    f"SQL_AGENT cannot test this candidate: the evidenced "
+                    f"parameter {finding.get('parameter')!r} lives in the "
+                    f"POST request body, not the endpoint's URL query "
+                    f"string, and the underlying tool's single-target CLI "
+                    f"mode has no way to specify POST body data. Testing "
+                    f"this correctly requires the tool's own crawl/form-"
+                    f"discovery mode, which this pipeline deliberately "
+                    f"does not use."
                 ),
                 evidence=evidence,
                 method=method,

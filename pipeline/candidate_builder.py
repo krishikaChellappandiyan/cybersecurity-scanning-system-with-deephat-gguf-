@@ -197,6 +197,20 @@ def build_candidate_skeletons(evidence: Dict[str, Any]) -> List[CandidateSkeleto
     # -----------------------------------------------------------------
     _ID_PARAM_HINTS = {"id", "uid", "pid", "item", "index", "num"}
     _URL_PARAM_HINTS = {"url", "host", "redirect", "next", "return", "dest", "goto", "link", "proxy", "fetch"}
+    # Classic reflected-XSS-prone parameter names -- deliberately a
+    # moderate, not maximal, set. XSS_AGENT scans the whole site
+    # regardless of which candidate triggered it (unlike SQL_AGENT/
+    # PARAM_INJECTION_AGENT, which test the specific candidate endpoint),
+    # so the cost of a slightly-too-broad match here is lower -- but
+    # still excludes very generic field names ("name", "title", "value")
+    # that appear on almost every form regardless of whether user input
+    # is ever reflected back, to keep the routing signal meaningful
+    # rather than firing on nearly everything. Confirmed real test case:
+    # xss-game.appspot.com's /level1/frame?query= (2026-08-14) -- this
+    # exact parameter, on this exact canonical reflected-XSS target, had
+    # no path to XSS_AGENT eligibility at all before this heuristic
+    # existed, despite being correctly discovered by the crawler.
+    _XSS_PARAM_HINTS = {"query", "search", "q", "keyword", "comment", "message", "msg", "text", "input", "content"}
     _LOGIN_PATH_HINTS = ("login", "signin", "logon")
     _REGISTER_PATH_HINTS = ("register", "signup", "newaccount")
     _ADMIN_PATH_HINTS = ("admin", "internal", "private", "settings", "manage", "debug")
@@ -255,6 +269,15 @@ def build_candidate_skeletons(evidence: Dict[str, Any]) -> List[CandidateSkeleto
             add(url, method, url_params[0],
                 [f"agent_targets: {url} (URL/host-shaped parameter: {url_params[0]})"],
                 "ssrf_or_redirect", "injection", "MEDIUM", ["PARAM_INJECTION_AGENT"])
+
+        xss_params = [
+            params[i] for i, p in enumerate(raw_params)
+            if _XSS_PARAM_HINTS & _param_tokens(p)
+        ]
+        if xss_params:
+            add(url, method, xss_params[0],
+                [f"agent_targets: {url} (reflection-prone parameter: {xss_params[0]})"],
+                "reflected_xss", "xss", "MEDIUM", ["XSS_AGENT"])
 
         if any(h in path_lower for h in _ADMIN_PATH_HINTS) and not is_login:
             add(url, method, None,

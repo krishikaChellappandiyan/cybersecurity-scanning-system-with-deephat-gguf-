@@ -5215,13 +5215,6 @@ class SPAScanner:
             return None
 
     async def _interact(self, page):
-\
-\
-\
-\
-\
-           
-                             
         for sel in ["[role='menuitem']", "[role='tab']", ".nav-item",
                     "[data-toggle]", "a[href]:not([href^='http'])"]:
             try:
@@ -5235,7 +5228,6 @@ class SPAScanner:
             except Exception as e:
                 self.emit.warn(f"[SPA-Interact] Phase 1 nav error ({sel}): {e}")
 
-                                                
         try:
             forms = await page.query_selector_all("form")
             for form in forms[:5]:
@@ -5269,7 +5261,6 @@ class SPAScanner:
         except Exception:
             pass
 
-                                           
         try:
             for el in (await page.query_selector_all(
                 "button:not([disabled]):not([type='submit'])"

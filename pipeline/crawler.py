@@ -64,23 +64,6 @@ class HellhoundCrawler:
             # sensitive_file_evidence, so this needs to be on by default
             # rather than opt-in per scan.
             "--sensitive-probe",
-            # --spa-interact was tried here (2026-08-14) to get login-form
-            # POST bodies captured for NOSQL_AGENT routing, but reverted
-            # the same day: it broke demo.owasp-juice.shop's crawl
-            # entirely (141-152 endpoints -> 0, confirmed across a
-            # previously-reliable target) and roughly tripled recon time.
-            # Root cause understood, not just observed: _interact()'s
-            # nav-item click loop includes any internal <a href> link,
-            # which can navigate the browser away from the target page
-            # before _harvest_dom()/_harvest_hash() run -- both read
-            # whatever page the browser currently happens to be on and
-            # silently swallow any resulting failure (broad except:
-            # pass). The intended benefit was never actually confirmed,
-            # since the crawl broke before that could be observed. Do not
-            # re-enable without a change on Hellhound's own side (e.g.
-            # constraining _interact() to same-page interaction only) --
-            # this isn't a case of picking a different target working
-            # around it, the flag itself needs to not navigate away.
         ]
 
         print(f"\n[*] Running Hellhound on {target}\n")

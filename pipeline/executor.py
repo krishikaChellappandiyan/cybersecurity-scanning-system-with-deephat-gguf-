@@ -140,6 +140,19 @@ class Executor:
                     print(f"Total Tests      : {total_tests}")
                     print(f"Confirmed        : {summary.get('confirmed', 0)}")
                     print(f"Possible         : {summary.get('possible', 0)}")
+
+                    candidates_routed = summary.get("candidates_routed")
+                    if candidates_routed and candidates_routed > endpoints_tested:
+                        print(
+                            f"\n({candidates_routed} candidate(s) routed here, "
+                            f"{endpoints_tested} unique endpoint(s) actually scanned — "
+                            f"some candidates pointed at the same real URL, not dropped):"
+                        )
+                        for url, ids in result.get("endpoint_dedup_map", {}).items():
+                            if len(ids) > 1:
+                                print(f"  {url}")
+                                print(f"    <- {', '.join(str(i) for i in ids)}")
+
                     if errors:
                         print(f"Errors           : {errors}")
                     print("==================================\n")

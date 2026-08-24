@@ -40,6 +40,14 @@ class SourceAuditorWrapper:
 
     def __init__(self):
 
+        # NOTE: dump_script's exact folder is inferred from the same
+        # folder-name-matches-file-name pattern every other confirmed
+        # wrapper in this project follows (audit_script below, mitm,
+        # injection, etc.) -- it did not appear explicitly in the
+        # original git status output this whole mapping was built from,
+        # so unlike the other three fixes in this batch, this one isn't
+        # directly confirmed. Worth checking this specific path if
+        # SOURCE_AUDIT_AGENT's dump step ever fails the same way.
         self.dump_script = Path(
             "agents/Sast analyzer25/Sast analyzer25.py"
         )

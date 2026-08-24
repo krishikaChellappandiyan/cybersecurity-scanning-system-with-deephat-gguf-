@@ -475,6 +475,66 @@ Task
             print("================================================\n")
 
             # --------------------------------------------------
+            # Pipeline Execution Summary
+            # --------------------------------------------------
+            # Purely additive: every value here is aggregated from counts
+            # already computed earlier in this same function (skeletons,
+            # classified, groups, agent_results) -- no new computation,
+            # no change to any existing behavior or printed section above.
+            # Exists so it's immediately obvious, at a glance, whether an
+            # unexpected result traces back to discovery, classification,
+            # routing, or agent execution, without re-reading the full
+            # transcript.
+
+            candidates_routed = sum(
+                len(decisions) for agent, decisions in groups.items()
+                if agent not in ("UNSUPPORTED", "SKIPPED")
+            )
+            candidates_unsupported = sum(
+                len(decisions) for agent, decisions in groups.items()
+                if agent in ("UNSUPPORTED", "SKIPPED")
+            )
+
+            real_agent_results = [
+                r for r in agent_results
+                if r.get("agent") not in ("UNSUPPORTED", "SKIPPED")
+            ]
+            agents_succeeded = sum(1 for r in real_agent_results if r.get("status") == "SUCCESS")
+            agents_failed = sum(1 for r in real_agent_results if r.get("status") == "FAILED")
+
+            total_confirmed = 0
+            for r in real_agent_results:
+                if r.get("status") != "SUCCESS":
+                    continue
+                _, c = _extract_finding_counts(r.get("agent"), r.get("result") or {})
+                total_confirmed += c or 0
+
+            print("================ PIPELINE SUMMARY ================\n")
+            print(f"Target                 : {target}")
+            print(f"Candidates discovered  : {len(skeletons)}")
+            print(f"Candidates classified  : {classified}")
+            print(f"Candidates routed      : {candidates_routed}")
+            print(f"Unsupported            : {candidates_unsupported}")
+            print()
+            print(f"Agents executed        : {len(real_agent_results)}")
+            print(f"Successful             : {agents_succeeded}")
+            print(f"Failed                 : {agents_failed}")
+            print()
+            print(f"Confirmed findings     : {total_confirmed}")
+            # No "potential findings" line here: the "total" half of
+            # _extract_finding_counts() means probe/request count for
+            # some agents (AUTHZ_AGENT: probes run; PARAM_INJECTION_AGENT:
+            # HTTP requests made), not a count of distinct findings --
+            # total-minus-confirmed produced numbers like "628 potential
+            # findings" from 4 probes and 624 requests, neither of which
+            # were actually findings. Confirmed findings is the one
+            # number this data reliably supports across every agent
+            # shape; each agent's own detailed summary above already
+            # shows its real per-agent breakdown (Possible/Confirmed for
+            # SQL_AGENT, etc.) for anyone who needs that detail.
+            print("\n====================================================\n")
+
+            # --------------------------------------------------
             # Save DeepHat Report
             # --------------------------------------------------
 

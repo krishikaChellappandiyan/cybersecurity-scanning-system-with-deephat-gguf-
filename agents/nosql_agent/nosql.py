@@ -6,6 +6,20 @@ Fixes:
 - Fixed 'name 'urlencode' is not defined' error.
 - Ensures GET parameter testing functions correctly.
 - Generates clean JSON reports.
+
+v2.3 changes (this patch):
+- Added --target / --params: when provided, skips the internal
+  Hellhound-Spider discovery crawl entirely and tests exactly the given
+  endpoint(s) instead of re-crawling the whole site blind. Mirrors
+  sqli.py's existing --target single-endpoint mode. Without --target,
+  behavior is unchanged (full crawl-then-test, same as before).
+- Fixed analyze_response()'s sensitive-data indicator to compare against
+  the baseline response instead of firing on any response containing
+  common security-related words. Confirmed root cause of false positives
+  on NodeGoat's own /tutorial/* educational pages (2026-08-24): those
+  pages' prose legitimately discusses "password"/"session"/"token" as
+  their subject matter, which tripped this check on every single request
+  regardless of whether an injection payload had any real effect.
 """
 
 import argparse
@@ -41,7 +55,8 @@ C_YELLOW = "\x1b[33m"
 C_CYAN = "\x1b[36m"
 
 class NoSQLInjector:
-    def __init__(self, base_url, proxy=None, dataset_path='dataset_nosql.txt', depth=3, concurrency=10, verbose=False):
+    def __init__(self, base_url, proxy=None, dataset_path='dataset_nosql.txt', depth=3, concurrency=10,
+                 verbose=False, target_endpoints=None):
         self.base_url = base_url.rstrip('/')
         self.session = requests.Session()
         self.session.verify = False
@@ -53,6 +68,12 @@ class NoSQLInjector:
         self.concurrency = concurrency
         self.verbose = verbose
         self.start_time = time.time()
+
+        # When set, run() skips discover_endpoints() entirely and tests
+        # exactly these endpoints (a dict of {path: [param_names]})
+        # instead of crawling the whole site. None (default) preserves
+        # the original full-crawl behavior unchanged.
+        self.target_endpoints = target_endpoints
         
         # Data Storage
         self.findings = []
@@ -281,6 +302,19 @@ class NoSQLInjector:
         print(f"\n[+] Hellhound-Spider discovered {len(self.discovered_endpoints)} unique endpoints")
         print(f"[+] Found {sum(len(v) for v in self.discovered_params.values())} total parameters")
 
+    def load_target_endpoints(self):
+        """
+        Skip discovery entirely and populate discovered_endpoints/params
+        directly from a caller-supplied target list, instead of crawling
+        the whole site. Used when --target is passed on the CLI.
+        """
+        print(f'\n[*] Phase 1: Skipped (--target given) — testing {len(self.target_endpoints)} caller-specified endpoint(s) directly')
+        for path, params in self.target_endpoints.items():
+            self.discovered_endpoints.add(path)
+            self.discovered_params[path] = list(params)
+        total_params = sum(len(v) for v in self.discovered_params.values())
+        print(f"[+] Using {len(self.discovered_endpoints)} endpoint(s), {total_params} parameter(s) — no crawl performed")
+
     def _check_robots(self):
         try:
             r = self.http_request('/robots.txt')
@@ -314,7 +348,25 @@ class NoSQLInjector:
         except: data = {'raw': content}
 
         if 'success' in content and 'true' in content: indicators.append('auth_success'); score += 3
-        if re.search(r'token|session|jwt|cookie|flag|api_key|password', content, re.I): indicators.append('sensitive_data'); score += 4
+
+        # FIXED: previously fired on ANY response containing these words,
+        # including pages whose legitimate prose content discusses them
+        # (e.g. NodeGoat's own /tutorial/* pages, which teach about
+        # passwords/sessions/tokens as their subject matter -- confirmed
+        # false-positive source, 2026-08-24). Now only counts this
+        # indicator when the words appear in the payload response but
+        # were NOT already present in the baseline -- i.e. the injection
+        # actually changed something, rather than the page simply being
+        # about that topic. Falls back to the old unconditional check
+        # only when no baseline was captured (matches test_query_injection,
+        # which doesn't pass one) to avoid silently losing the signal.
+        sensitive_pat = re.compile(r'token|session|jwt|cookie|flag|api_key|password', re.I)
+        if baseline is not None:
+            if sensitive_pat.search(content) and not sensitive_pat.search(baseline.text):
+                indicators.append('sensitive_data'); score += 4
+        else:
+            if sensitive_pat.search(content): indicators.append('sensitive_data'); score += 4
+
         if 'admin' in content and 'password' in content: indicators.append('credential_leak'); score += 5
         if content.count('{') > 5: indicators.append('bulk_data'); score += 2
         if baseline and len(content) > len(baseline.text) * 2: indicators.append('size_anomaly'); score += 2
@@ -440,7 +492,10 @@ class NoSQLInjector:
         print(f"\n{C_YELLOW}[*]{C_RESET} Target: {C_GREEN}{self.base_url}{C_RESET}")
         print(f"{C_YELLOW}[*]{C_RESET} Starting exploitation...\n")
         
-        self.discover_endpoints()
+        if self.target_endpoints:
+            self.load_target_endpoints()
+        else:
+            self.discover_endpoints()
         print(f'\n{C_CYAN}{"═"*60}{C_RESET}'); print('  Phase 3-6: Testing & Exploitation'); print(f'{C_CYAN}{"═"*60}{C_RESET}')
         
         with ThreadPoolExecutor(max_workers=self.concurrency) as executor:
@@ -485,6 +540,19 @@ class NoSQLInjector:
             "findings": self.findings, "errors": self.errors, "gap_reason": None
         }
 
+def _parse_target_endpoints(target_arg, params_arg):
+    """
+    Builds the {path: [params]} dict load_target_endpoints() needs from
+    --target (one or more comma-separated paths) and --params (comma-
+    separated param names, applied to every given target path -- this
+    tool tests one path at a time in practice, so a single shared param
+    list is sufficient rather than needing a more complex per-path
+    mapping syntax).
+    """
+    paths = [p.strip() for p in target_arg.split(',') if p.strip()]
+    params = [p.strip() for p in params_arg.split(',')] if params_arg else []
+    return {urlparse(p).path or '/': params for p in paths}
+
 def main():
     parser = argparse.ArgumentParser(description='NoSQL Injection Exploitation Framework v2.2')
     parser.add_argument('--url', '-u', required=True, help='Target base URL')
@@ -494,9 +562,17 @@ def main():
     parser.add_argument('--concurrency', '-c', type=int, default=10, help='Concurrent requests')
     parser.add_argument('--verbose', '-v', action='store_true', help='Show all discovery logs')
     parser.add_argument('--output', '-o', help='Output file for report (JSON)')
+    parser.add_argument('--target', '-t',
+                        help='Comma-separated path(s) to test directly, skipping the internal '
+                             'discovery crawl entirely (e.g. "/login,/signup"). Use with --params.')
+    parser.add_argument('--params',
+                        help='Comma-separated param names to test on each --target path '
+                             '(e.g. "userName,password"). Ignored without --target.')
     
     args = parser.parse_args()
-    injector = NoSQLInjector(args.url, args.proxy, args.dataset, args.depth, args.concurrency, args.verbose)
+    target_endpoints = _parse_target_endpoints(args.target, args.params) if args.target else None
+    injector = NoSQLInjector(args.url, args.proxy, args.dataset, args.depth, args.concurrency, args.verbose,
+                             target_endpoints=target_endpoints)
     report = injector.run()
     
     if args.output:
