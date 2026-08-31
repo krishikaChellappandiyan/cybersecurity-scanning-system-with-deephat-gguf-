@@ -32,12 +32,12 @@ is the prompt-level version DeepHat actually reads).
 # keyword should unambiguously identify one vector, so cross-agent
 # overlap stays intentional rather than accidental.
 #
-# SAST_AGENT is included for completeness/documentation even when it
-# isn't currently in pipeline/planner.py's SUPPORTED_AGENTS (it can be
-# disabled independently of this map — that's a routing-availability
-# decision, not a capability-definition one; attempting to route there
-# while disabled is already blocked by the earlier SUPPORTED_AGENTS
-# check regardless of what this map says).
+# SAST_AGENT is now wired into pipeline/planner.py's SUPPORTED_AGENTS
+# and pipeline/executor.py (see agents/sast_wrapper.py). This map can
+# still be edited independently of that -- disabling routing there
+# doesn't require removing the capability definition here, and vice
+# versa; the SUPPORTED_AGENTS check is what actually gates routing
+# regardless of what this map says.
 AGENT_CAPABILITIES = {
     "XSS_AGENT": {
         "xss", "reflected_xss", "stored_xss", "dom_xss", "dom_based_xss",

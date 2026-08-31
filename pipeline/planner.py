@@ -66,6 +66,7 @@ SUPPORTED_AGENTS = {
     "NOSQL_AGENT",
     "SQL_AGENT",
     "PARAM_INJECTION_AGENT",
+    "SAST_AGENT",
 }
 
 # Bucket keys used in the grouped output for findings that were NOT routed

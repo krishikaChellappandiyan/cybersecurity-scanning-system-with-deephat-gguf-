@@ -5,6 +5,7 @@ from agents.mitm_wrapper import MitmWrapper
 from agents.nosql_wrapper import NosqlWrapper
 from agents.sqli_wrapper import SqlWrapper
 from agents.injection_wrapper import InjectionWrapper
+from agents.sast_wrapper import SastWrapper
 
 
 class Executor:
@@ -18,6 +19,7 @@ class Executor:
         self.nosql = NosqlWrapper()
         self.sql = SqlWrapper()
         self.injection = InjectionWrapper()
+        self.sast = SastWrapper()
 
     def execute(self, groups, spider_json_path, target_url):
 
@@ -387,6 +389,58 @@ class Executor:
                     })
 
             # =====================================================
+            # SAST AGENT (Static Application Security Testing)
+            # =====================================================
+
+            elif agent == "SAST_AGENT":
+
+                print("\nLaunching SAST Validation Agent...\n")
+
+                try:
+
+                    result = self.sast.run(target_url, findings)
+
+                    if result.get("status") == "SKIPPED":
+
+                        print(f"SAST Agent skipped: {result.get('reason')}\n")
+
+                        agent_results.append({
+                            "agent": "SAST_AGENT",
+                            "status": "SKIPPED",
+                            "result": result
+                        })
+
+                    else:
+
+                        print("✓ SAST Agent completed successfully.")
+
+                        sast_findings = result.get("findings", [])
+                        by_severity = result.get("_by_severity", {})
+
+                        print("\n========== SAST SUMMARY ==========")
+                        print(f"Target         : {target_url}")
+                        print(f"Total Findings : {result.get('_total', 0)}")
+                        for sev in ("Critical", "High", "Medium", "Low", "Info"):
+                            print(f"  {sev:8}: {by_severity.get(sev, 0)}")
+                        print("===================================\n")
+
+                        agent_results.append({
+                            "agent": "SAST_AGENT",
+                            "status": "SUCCESS",
+                            "result": result
+                        })
+
+                except Exception as e:
+
+                    print(f"SAST Agent failed: {e}")
+
+                    agent_results.append({
+                        "agent": "SAST_AGENT",
+                        "status": "FAILED",
+                        "error": str(e)
+                    })
+
+            # =====================================================
             # UNSUPPORTED
             # =====================================================
 
@@ -435,4 +489,3 @@ class Executor:
         print("\n========== EXECUTOR COMPLETE ==========\n")
 
         return agent_results
-

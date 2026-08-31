@@ -200,15 +200,19 @@ def build_candidate_skeletons(evidence: Dict[str, Any]) -> List[CandidateSkeleto
     # -----------------------------------------------------------------
     for entry in evidence.get("sensitive_file_evidence") or []:
         sev = entry.get("severity", "MEDIUM")
-        # Git_Exposure findings used to be eligible for SOURCE_AUDIT_AGENT
-        # (which recovered and statically analyzed the exposed source).
-        # That agent's underlying tools were removed from the project, so
-        # this is now always ungrounded-for-agents -- the finding itself
-        # is still surfaced as a candidate (visible in the report under
-        # UNSUPPORTED) even with nothing left to route it to.
+        # Git_Exposure findings are eligible for SAST_AGENT, which
+        # checks for exactly this (an exposed .git directory), recovers
+        # the real source from it if present, and statically analyzes
+        # it for hardcoded secrets, weak crypto, and vulnerable
+        # dependencies. Other sensitive_file_evidence types (generic
+        # backup/config files, not a VCS directory) have no agent that
+        # can act on them -- SAST_AGENT specifically needs a git
+        # repository to recover, not an arbitrary leaked file.
+        is_git = entry.get("type") == "Git_Exposure"
+        eligible = ["SAST_AGENT"] if is_git else []
         add(entry.get("url"), "GET", None,
             [f"sensitive_file_evidence: {entry.get('type')} ({sev}) at {entry.get('url')}"],
-            "sensitive_file", "exposure", sev, [])
+            "sensitive_file", "exposure", sev, eligible)
 
     for url in evidence.get("admin_panel_evidence") or []:
         add(url, "GET", None,

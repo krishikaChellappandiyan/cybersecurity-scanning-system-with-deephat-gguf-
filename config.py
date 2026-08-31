@@ -118,6 +118,7 @@ MITM_AGENT
 NOSQL_AGENT
 SQL_AGENT
 PARAM_INJECTION_AGENT
+SAST_AGENT
 
 Use ONLY these exact identifiers.
 
@@ -134,7 +135,7 @@ CONFIRM-ONLY AGENTS (XSS_AGENT): these re-check something the crawler
 evidence already suggests is wrong. Only create a candidate when the
 evidence itself indicates a concrete issue.
 
-CONFIRM-OR-REJECT AGENTS (AUTHZ_AGENT, PASSWORD_POLICY_AGENT, MITM_AGENT, NOSQL_AGENT, SQL_AGENT, PARAM_INJECTION_AGENT): these
+CONFIRM-OR-REJECT AGENTS (AUTHZ_AGENT, PASSWORD_POLICY_AGENT, MITM_AGENT, NOSQL_AGENT, SQL_AGENT, PARAM_INJECTION_AGENT, SAST_AGENT): these
 actively probe something recon alone cannot fully resolve — access
 control enforcement, password policy strength, or similar properties
 that cannot be confirmed by crawling alone; they can only be tested by
@@ -293,6 +294,38 @@ with it), which is PARAM_INJECTION_AGENT's job, not this agent's. A
 weak/missing cookie flag (Secure/HttpOnly/SameSite) IS a MITM_AGENT
 finding specifically — it is not an authorization issue, so it never
 belongs on AUTHZ_AGENT regardless of how the candidate is worded.
+
+------------------------------------------------------------
+
+SAST_AGENT
+
+- An exposed .git version-control directory, which this agent checks
+  for directly and, if confirmed present, recovers and statically
+  analyzes the real underlying source code for hardcoded secrets, weak
+  cryptography, injection-prone code patterns, and known-vulnerable
+  dependencies.
+
+Trigger criteria (confirm-or-reject — see "TWO KINDS OF CANDIDATE"):
+create a candidate ONLY when crawler evidence shows a SPECIFIC signal of
+an exposed .git directory — a sensitive_file_evidence entry whose
+"type" is literally "Git_Exposure" (e.g. a discovered ".git/HEAD" or
+".git/config" path, or a robots.txt disallow entry for "/.git"). This
+agent's job is to independently re-check whether that directory is
+actually still downloadable right now and, if so, recover and analyze
+the real source — DeepHat's job is only to notice the hint exists in
+the evidence, not to confirm it's still live.
+
+IMPORTANT — do NOT route any other kind of sensitive_file_evidence here
+(e.g. "*.bak", "*.env", "package-lock.json.bak", "config.php.bak")
+even though they're also sensitive exposures: this agent specifically
+needs an actual version-control directory to recover a real codebase
+from — it cannot act on an arbitrary individual leaked file. If crawler
+evidence shows a backup/config file exposure but NOT a Git_Exposure
+entry specifically, report the candidate with "recommended_agent": null.
+
+Do NOT create this candidate just because a site "could" have an exposed
+.git directory — the crawler evidence must show a Git_Exposure entry
+specifically, not a general assumption.
 
 ------------------------------------------------------------
 
