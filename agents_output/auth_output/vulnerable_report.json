@@ -1,8 +1,0 @@
-{
-  "agent": "Agent 36",
-  "report_type": "VULNERABLE_ENDPOINTS",
-  "target": "https://bugcrowd.com/engagements/openai",
-  "scan_time": "2026-08-14T12:59:34.515909",
-  "total_vulnerabilities": 0,
-  "results": []
-}

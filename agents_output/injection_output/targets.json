@@ -1,1 +1,0 @@
-{"endpoints": [{"url": "https://www.bugcrowd.com/h/authenticate-redirect", "method": "GET", "query_params": [], "body_params": [], "path_params": [], "risk_tags": ["ssrf_or_redirect"], "category": "ssrf_or_redirect", "ssrf_candidate": false, "ssti_candidate": false, "sspp_candidate": false}]}
