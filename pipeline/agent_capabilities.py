@@ -56,10 +56,6 @@ AGENT_CAPABILITIES = {
         "git_exposure", "exposed_source", "source_code_exposure",
         "hardcoded_secret", "dependency_vulnerability", "cve",
     },
-    "SOURCE_AUDIT_AGENT": {
-        "git_exposure", "exposed_source", "source_code_exposure",
-        "taint", "hardcoded_secret", "dataflow",
-    },
     "MITM_AGENT": {
         "mitm", "cookie", "websocket", "graphql_introspection",
         "cors", "jwt", "oauth_misconfiguration", "mixed_content",

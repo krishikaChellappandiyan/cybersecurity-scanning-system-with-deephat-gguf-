@@ -162,13 +162,36 @@ def build_candidate_skeletons(evidence: Dict[str, Any]) -> List[CandidateSkeleto
             "authz", "HIGH", ["AUTHZ_AGENT"])
 
     for entry in evidence.get("idor_evidence") or []:
+        # Confirmed real gap (systemic audit, 2026-08-31): this used to
+        # be hard-coded to eligible=[] with a "no IDOR_AGENT yet" comment
+        # -- but AUTHZ_AGENT's own capability list (agent_capabilities.py)
+        # explicitly includes "idor" as one of its keywords, and
+        # config.py's own AUTHZ_AGENT prompt section explicitly lists
+        # "IDOR" as within its scope alongside Broken Access Control and
+        # Missing Authorization. There is no separate IDOR_AGENT and
+        # never has been -- IDOR was always meant to be AUTHZ_AGENT's
+        # job, same as every other missing-authorization-shaped finding.
         add(entry.get("url"), entry.get("method", "GET"), entry.get("parameter"),
-            [f"idor_evidence: {entry}"], "idor", "authz", "MEDIUM", [])  # no IDOR_AGENT yet
+            [f"idor_evidence: {entry}"], "idor", "authz", "MEDIUM", ["AUTHZ_AGENT"])
 
     for entry in evidence.get("sensitive_data_source_evidence") or []:
         add(entry.get("url"), entry.get("method", "GET"), None,
             [f"sensitive_data_source_evidence: {entry}"], "sensitive_data_source",
             "info_exposure", "MEDIUM", [])
+
+    for entry in evidence.get("auth_required_evidence") or []:
+        # 401/403 on these paths means access control is correctly
+        # blocking them -- this is confirmation something is WORKING,
+        # not a vulnerability to hand an agent. No agent tests "try to
+        # get past auth on this one specific already-blocked path"; that
+        # would just be re-confirming the same 401/403 the crawler
+        # already observed. Surfaced purely so the finding (often
+        # backup/leak-shaped filenames worth knowing about even while
+        # correctly protected) is visible in the report instead of
+        # silently dropped, same as sensitive_data_source_evidence above.
+        add(entry.get("url"), entry.get("method", "GET"), None,
+            [f"auth_required_evidence: {entry.get('url')} (access-controlled, not a vulnerability)"],
+            "auth_walled_path", "info_exposure", "LOW", [])
 
     # -----------------------------------------------------------------
     # 2. sensitive_file_evidence / admin_panel_evidence — always surfaced
@@ -177,10 +200,15 @@ def build_candidate_skeletons(evidence: Dict[str, Any]) -> List[CandidateSkeleto
     # -----------------------------------------------------------------
     for entry in evidence.get("sensitive_file_evidence") or []:
         sev = entry.get("severity", "MEDIUM")
-        eligible = ["SOURCE_AUDIT_AGENT"] if entry.get("type") == "Git_Exposure" else []
+        # Git_Exposure findings used to be eligible for SOURCE_AUDIT_AGENT
+        # (which recovered and statically analyzed the exposed source).
+        # That agent's underlying tools were removed from the project, so
+        # this is now always ungrounded-for-agents -- the finding itself
+        # is still surfaced as a candidate (visible in the report under
+        # UNSUPPORTED) even with nothing left to route it to.
         add(entry.get("url"), "GET", None,
             [f"sensitive_file_evidence: {entry.get('type')} ({sev}) at {entry.get('url')}"],
-            "sensitive_file", "exposure", sev, eligible)
+            "sensitive_file", "exposure", sev, [])
 
     for url in evidence.get("admin_panel_evidence") or []:
         add(url, "GET", None,
@@ -211,8 +239,23 @@ def build_candidate_skeletons(evidence: Dict[str, Any]) -> List[CandidateSkeleto
     # no path to XSS_AGENT eligibility at all before this heuristic
     # existed, despite being correctly discovered by the crawler.
     _XSS_PARAM_HINTS = {"query", "search", "q", "keyword", "comment", "message", "msg", "text", "input", "content"}
+    # Confirmed real gap (systemic audit, 2026-08-31): config.py's own
+    # PARAM_INJECTION_AGENT prompt section explicitly lists these
+    # parameter names as a Command Injection / Path Traversal trigger,
+    # the same "parameter shape alone is sufficient grounds" pattern
+    # used for every other heuristic in this function -- but no such
+    # heuristic existed here before this fix. cmdi_evidence below is a
+    # separate, rarer, crawler-confirmed signal; this is the common,
+    # weaker parameter-name-shape signal, same tier as _ID_PARAM_HINTS.
+    _CMDI_PARAM_HINTS = {"cmd", "command", "file", "filename", "path", "dir", "exec", "execute"}
     _LOGIN_PATH_HINTS = ("login", "signin", "logon")
     _REGISTER_PATH_HINTS = ("register", "signup", "newaccount")
+    # Confirmed real gap (systemic audit, 2026-08-31): config.py's own
+    # PASSWORD_POLICY_AGENT prompt section explicitly lists
+    # "password-reset", "forgot-password", and "change-password" as
+    # valid trigger paths alongside registration -- none of these were
+    # ever checked here, only _REGISTER_PATH_HINTS above.
+    _CREDENTIAL_CHANGE_PATH_HINTS = ("reset-password", "forgot-password", "change-password", "resetpassword", "forgotpassword", "changepassword")
     _ADMIN_PATH_HINTS = ("admin", "internal", "private", "settings", "manage", "debug")
 
     for t in evidence.get("agent_targets") or []:
@@ -236,11 +279,13 @@ def build_candidate_skeletons(evidence: Dict[str, Any]) -> List[CandidateSkeleto
 
         is_login = any(h in path_lower for h in _LOGIN_PATH_HINTS)
         is_register = any(h in path_lower for h in _REGISTER_PATH_HINTS)
+        is_credential_change = any(h in path_lower for h in _CREDENTIAL_CHANGE_PATH_HINTS)
         has_password_field = any("pass" in p or p == "pw" for p in params)
 
-        if is_register and has_password_field:
+        if (is_register or is_credential_change) and has_password_field:
+            reason = "registration form" if is_register else "password reset/change form"
             add(url, method, None,
-                [f"agent_targets: {url} (registration form with password field)"],
+                [f"agent_targets: {url} ({reason} with password field)"],
                 "password_policy", "auth", "MEDIUM", ["PASSWORD_POLICY_AGENT"])
             continue
 
@@ -279,16 +324,27 @@ def build_candidate_skeletons(evidence: Dict[str, Any]) -> List[CandidateSkeleto
                 [f"agent_targets: {url} (reflection-prone parameter: {xss_params[0]})"],
                 "reflected_xss", "xss", "MEDIUM", ["XSS_AGENT"])
 
+        cmdi_params = [
+            params[i] for i, p in enumerate(raw_params)
+            if _CMDI_PARAM_HINTS & _param_tokens(p)
+        ]
+        if cmdi_params:
+            add(url, method, cmdi_params[0],
+                [f"agent_targets: {url} (command/file-path-shaped parameter: {cmdi_params[0]})"],
+                "command_injection", "injection", "MEDIUM", ["PARAM_INJECTION_AGENT"])
+
         if any(h in path_lower for h in _ADMIN_PATH_HINTS) and not is_login:
             add(url, method, None,
                 [f"agent_targets: {url} (path suggests privileged functionality)"],
                 "authz", "authz", "MEDIUM", ["AUTHZ_AGENT"])
 
     # -----------------------------------------------------------------
-    # 4. header_audit / tls_audit — always agent=null (no HEADERS_AGENT
-    #    exists; MITM_AGENT only applies for a real weak-TLS/cert signal,
-    #    which is a MITM_AGENT decision DeepHat still makes explicitly,
-    #    not something this builder pre-decides).
+    # 4. header_audit / tls_audit / websocket / graphql / openapi / cors
+    #    — the passive-network-observer signal family. header_audit
+    #    alone is always agent=null (no HEADERS_AGENT exists yet); the
+    #    rest deterministically decide MITM_AGENT eligibility here,
+    #    matching the exact trigger criteria documented in config.py's
+    #    own MITM_AGENT prompt section.
     # -----------------------------------------------------------------
     header_issues = evidence.get("header_audit") or []
     if header_issues:
@@ -301,6 +357,39 @@ def build_candidate_skeletons(evidence: Dict[str, Any]) -> List[CandidateSkeleto
         add(evidence.get("meta", {}).get("target"), "GET", None,
             [f"tls_audit: {entry.get('issue')} ({entry.get('severity')}) — {entry.get('detail')}"],
             "tls_issue", "tls", entry.get("severity", "MEDIUM"), eligible)
+
+    # Confirmed real gap (demo.owasp-juice.shop, 2026-08-31): MITM_AGENT's
+    # own capability list explicitly includes "websocket",
+    # "graphql_introspection", and "cors", and config.py's prompt
+    # explicitly documents all three as valid triggers -- but nothing in
+    # this file ever read summary.websocket_detected/socketio_count, the
+    # graphql/openapi arrays, or summary.cors_issues before this fix.
+    # MITM_AGENT was correctly capable and correctly documented, but
+    # structurally unreachable for these three signals specifically.
+    summary = evidence.get("summary") or {}
+    target = evidence.get("meta", {}).get("target")
+
+    if summary.get("websocket_detected") or (summary.get("socketio_count") or 0) > 0:
+        add(target, "GET", None,
+            [f"summary: websocket_detected=True, socketio_count={summary.get('socketio_count', 0)}"],
+            "websocket_exposure", "mitm", "LOW", ["MITM_AGENT"])
+
+    for entry in evidence.get("graphql") or []:
+        gql_url = entry.get("url") if isinstance(entry, dict) else None
+        add(gql_url or target, "GET", None,
+            [f"graphql: introspection endpoint discovered — {entry}"],
+            "graphql_introspection", "mitm", "MEDIUM", ["MITM_AGENT"])
+
+    for entry in evidence.get("openapi") or []:
+        oas_url = entry.get("url") if isinstance(entry, dict) else None
+        add(oas_url or target, "GET", None,
+            [f"openapi: spec exposed — {entry}"],
+            "openapi_exposure", "mitm", "LOW", ["MITM_AGENT"])
+
+    if (summary.get("cors_issues") or 0) > 0:
+        add(target, "GET", None,
+            [f"summary: cors_issues={summary.get('cors_issues')}"],
+            "cors_misconfiguration", "mitm", "MEDIUM", ["MITM_AGENT"])
 
     return skeletons
 

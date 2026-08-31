@@ -59,10 +59,12 @@ class HellhoundCrawler:
             # Without this, Hellhound skips its known-sensitive-path probe
             # entirely ("[SensitiveFiles] Skipped (use --sensitive-probe/-e
             # to enable)") -- which includes /.git/HEAD and /.git/config
-            # (type "Git_Exposure"). SOURCE_AUDIT_AGENT's routing depends
-            # on that evidence actually showing up in
-            # sensitive_file_evidence, so this needs to be on by default
-            # rather than opt-in per scan.
+            # (type "Git_Exposure"). No agent currently tests this finding
+            # further (SOURCE_AUDIT_AGENT, which used to, was removed along
+            # with its underlying tools), but the finding itself still has
+            # real standalone value in the report -- an exposed .git
+            # directory is a serious, actionable issue on its own, visible
+            # under UNSUPPORTED even with nothing left to route it to.
             "--sensitive-probe",
         ]
 

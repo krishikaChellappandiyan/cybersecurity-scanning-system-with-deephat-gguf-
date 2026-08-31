@@ -1,36 +1,6 @@
-"""
-pipeline/executor.py
-
-Receives routing decisions from Planner and executes
-the appropriate validation agent.
-
-Current stage:
-- XSS Agent is integrated.
-- AUTHZ Agent is integrated.
-- PASSWORD_POLICY Agent is integrated.
-- SAST Agent is integrated.
-- SOURCE_AUDIT Agent is integrated (independent — not a follow-up to
-  SAST_AGENT; DeepHat can route to either on its own).
-- MITM Agent is integrated (passive observer — no active probing).
-- NOSQL Agent is integrated (does its own crawl-based discovery, same
-  pattern as PASSWORD_POLICY Agent).
-- SQL Agent is integrated (tests exactly the DeepHat-flagged endpoint's
-  own query params — no crawling, looped once per routed endpoint since
-  the underlying tool's CLI only accepts one --target at a time).
-
-HEADERS_AGENT is intentionally not supported right now (removed —
-was never fully wired end-to-end). May come back later alongside the
-next batch of agents below.
-
-Future stage:
-- IDOR_AGENT
-- Additional validation agents
-"""
-
 from agents.xss_wrapper import XSSWrapper
 from agents.authz_wrapper import AuthzWrapper
 from agents.password_wrapper import PasswordWrapper
-from agents.source_auditor_wrapper import SourceAuditorWrapper
 from agents.mitm_wrapper import MitmWrapper
 from agents.nosql_wrapper import NosqlWrapper
 from agents.sqli_wrapper import SqlWrapper
@@ -44,7 +14,6 @@ class Executor:
         self.xss = XSSWrapper()
         self.authz = AuthzWrapper()
         self.password = PasswordWrapper()
-        self.source_auditor = SourceAuditorWrapper()
         self.mitm = MitmWrapper()
         self.nosql = NosqlWrapper()
         self.sql = SqlWrapper()
@@ -337,65 +306,6 @@ class Executor:
                     })
 
             # =====================================================
-            # SOURCE AUDIT AGENT (Source Auditor Pro)
-            #
-            # Fully independent from SAST_AGENT — DeepHat routes to
-            # this on its own. Obtains its own recovered source via
-            # Sast analyzer25.py --dump-only rather than depending on
-            # SAST_AGENT having run.
-            # =====================================================
-
-            elif agent == "SOURCE_AUDIT_AGENT":
-
-                print("\nLaunching Source Audit Validation Agent...\n")
-
-                try:
-
-                    result = self.source_auditor.run(target_url, findings)
-
-                    if result.get("status") == "SKIPPED":
-
-                        print(f"Source Audit Agent skipped: {result.get('reason')}\n")
-
-                        agent_results.append({
-                            "agent": "SOURCE_AUDIT_AGENT",
-                            "status": "SKIPPED",
-                            "result": result
-                        })
-
-                    else:
-
-                        print("✓ Source Audit Agent completed.")
-
-                        print("\n========== SOURCE AUDIT SUMMARY ==========")
-                        print(f"Status         : {result.get('status')}")
-                        print(f"Total Findings : {result.get('_total', 0)}")
-                        print(f"  secrets   : {len(result.get('secrets', []))}")
-                        print(f"  taint     : {len(result.get('taint', []))}")
-                        print(f"  logic     : {len(result.get('logic', []))}")
-                        print(f"  sensitive : {len(result.get('sensitive', []))}")
-                        errors = result.get("_errors", [])
-                        if errors:
-                            print(f"  errors    : {errors}")
-                        print("===========================================\n")
-
-                        agent_results.append({
-                            "agent": "SOURCE_AUDIT_AGENT",
-                            "status": result.get("status", "SUCCESS"),
-                            "result": result
-                        })
-
-                except Exception as e:
-
-                    print(f"Source Audit Agent failed: {e}")
-
-                    agent_results.append({
-                        "agent": "SOURCE_AUDIT_AGENT",
-                        "status": "FAILED",
-                        "error": str(e)
-                    })
-
-            # =====================================================
             # MITM AGENT (Passive Observer)
             # =====================================================
 
@@ -525,3 +435,4 @@ class Executor:
         print("\n========== EXECUTOR COMPLETE ==========\n")
 
         return agent_results
+

@@ -260,10 +260,6 @@ class ReportManager:
                 )
             return total, confirmed
 
-        if agent_name == "SOURCE_AUDIT_AGENT":
-            total = agent_result.get("_total", 0)
-            return total, total
-
         if agent_name in ("NOSQL_AGENT", "SQL_AGENT", "PARAM_INJECTION_AGENT"):
             summary = agent_result.get("summary", {})
             total = summary.get("vulnerabilities_found",
@@ -344,22 +340,6 @@ class ReportManager:
             out.append("\n**Findings:**")
             for f in findings:
                 out.append(f"- {f}")
-        return "\n".join(out)
-
-    def _format_source_audit(self, r: dict) -> str:
-        if r.get("status") == "SKIPPED":
-            return f"_Skipped:_ {r.get('reason', 'no recovered source to scan')}"
-        out = [f"**Total findings:** {r.get('_total', 0)}\n"]
-        for category in ("secrets", "taint", "logic", "sensitive"):
-            items = r.get(category, [])
-            if not items:
-                continue
-            out.append(f"\n**{category.capitalize()} ({len(items)}):**")
-            for item in items[:20]:
-                out.append(f"- {json.dumps(item, default=str)[:200]}")
-        errors = r.get("_errors", [])
-        if errors:
-            out.append(f"\n**Errors:** {errors}")
         return "\n".join(out)
 
     def _format_mitm(self, r: dict) -> str:
@@ -477,7 +457,6 @@ class ReportManager:
         "XSS_AGENT": _format_xss,
         "AUTHZ_AGENT": _format_authz,
         "PASSWORD_POLICY_AGENT": _format_password_policy,
-        "SOURCE_AUDIT_AGENT": _format_source_audit,
         "MITM_AGENT": _format_mitm,
         "NOSQL_AGENT": _format_sql_family,
         "SQL_AGENT": _format_sql_family,

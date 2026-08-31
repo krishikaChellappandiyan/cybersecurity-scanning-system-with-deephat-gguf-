@@ -56,10 +56,6 @@ def _extract_finding_counts(agent_name, agent_result):
             )
         return total, confirmed
 
-    if agent_name == "SOURCE_AUDIT_AGENT":
-        total = agent_result.get("_total", 0)
-        return total, total
-
     if agent_name == "NOSQL_AGENT":
         summary = agent_result.get("summary", {})
         total = summary.get("vulnerabilities_found", len(agent_result.get("findings", [])))

@@ -114,7 +114,6 @@ fit one of the agents below, set "recommended_agent": null.
 XSS_AGENT
 AUTHZ_AGENT
 PASSWORD_POLICY_AGENT
-SOURCE_AUDIT_AGENT
 MITM_AGENT
 NOSQL_AGENT
 SQL_AGENT
@@ -135,11 +134,11 @@ CONFIRM-ONLY AGENTS (XSS_AGENT): these re-check something the crawler
 evidence already suggests is wrong. Only create a candidate when the
 evidence itself indicates a concrete issue.
 
-CONFIRM-OR-REJECT AGENTS (AUTHZ_AGENT, PASSWORD_POLICY_AGENT, SOURCE_AUDIT_AGENT, MITM_AGENT, NOSQL_AGENT, SQL_AGENT, PARAM_INJECTION_AGENT): these
+CONFIRM-OR-REJECT AGENTS (AUTHZ_AGENT, PASSWORD_POLICY_AGENT, MITM_AGENT, NOSQL_AGENT, SQL_AGENT, PARAM_INJECTION_AGENT): these
 actively probe something recon alone cannot fully resolve — access
-control enforcement, password policy strength, or whether a hinted
-source-code/version-control exposure is real, cannot be confirmed by
-crawling alone; they can only be tested by sending real requests. For
+control enforcement, password policy strength, or similar properties
+that cannot be confirmed by crawling alone; they can only be tested by
+sending real requests. For
 these agents, the correct candidate is not "a vulnerability exists"
 but "this is a relevant, untested candidate that the agent should
 actively validate." Create this kind of candidate whenever the trigger
@@ -243,36 +242,6 @@ credential-setting endpoint IS the trigger. But that endpoint must be
 one you actually see in the evidence — do NOT create this candidate for
 a "/register" or "/signup" endpoint you have not actually seen, even
 if it's a common path for this type of application.
-
-------------------------------------------------------------
-
-SOURCE_AUDIT_AGENT
-
-- Exposed .git (or other version-control) directory
-
-Trigger criteria (confirm-or-reject — see "TWO KINDS OF CANDIDATE"):
-create a candidate ONLY when crawler evidence shows a SPECIFIC signal of
-an exposed .git/.svn/.hg version-control directory — e.g. a
-robots.txt disallow entry or discovered path literally containing
-"/.git", "/.svn", "/.hg", or a discovered ".git/HEAD" / ".git/config"
-style path. SOURCE_AUDIT_AGENT's job is to check whether that directory
-is actually accessible and, if so, reconstruct the recovered source and
-perform deep taint analysis (source→sink tracking, AST dataflow) on it
-— DeepHat's job is only to notice the hint exists in the evidence, not
-to confirm it's real.
-
-IMPORTANT — do NOT route generic backup/config file candidates here
-(e.g. "*.bak", "*.env", "package-lock.json.bak", "config.php.bak")
-even though they're also sensitive exposures: SOURCE_AUDIT_AGENT can
-only act on an actual version-control directory, not on individual
-backup files. If crawler evidence shows a backup/config file exposure
-but NOT a VCS directory, report the candidate with
-"recommended_agent": null — there is currently no agent that
-fetches/analyzes arbitrary exposed files directly, only exposed .git
-repositories.
-
-Do NOT create this candidate just because a site "could" have an exposed
-.git directory — the crawler evidence must show something specific.
 
 ------------------------------------------------------------
 
@@ -715,11 +684,9 @@ reasoning text either. You have no way to verify a specific CVE
 actually matches a generic candidate you're proposing from crawler
 evidence, and assigning one falsely implies this is a cataloged,
 already-confirmed vulnerability rather than something that still
-needs testing. The only agent that legitimately surfaces real CVE
-references is SOURCE_AUDIT_AGENT/dependency scanning, which looks
-them up directly against a real vulnerability database — if you
-weren't given a CVE reference in the supplied evidence, don't create
-one.
+needs testing. No currently-wired agent looks up or confirms real CVE
+references — if you weren't given a CVE reference in the supplied
+evidence, don't create one.
 
 12. If insufficient evidence exists, do not create a candidate.
 
