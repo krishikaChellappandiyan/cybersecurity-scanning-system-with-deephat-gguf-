@@ -35,59 +35,44 @@ Repository: https://github.com/project-hellhound-org/Hellhound-Spider
 ---
 
 # Architecture
-                         Target URL
-                             │
-                             ▼
-                    ┌─────────────────┐
-                    │ Hellhound Spider│
-                    │ Automated Recon │
-                    └────────┬────────┘
-                             │
-                             ▼
-                    Spider JSON Report
-                             │
-                             ▼
-                    ┌─────────────────┐
-                    │ SpiderExtractor │
-                    │ Evidence Filter │
-                    └────────┬────────┘
-                             │
-                             ▼
-                    ┌─────────────────┐
-                    │ CandidateBuilder│
-                    │ Deterministic   │
-                    │ Candidates      │
-                    └────────┬────────┘
-                             │
-                             ▼
-                    ┌─────────────────┐
-                    │   DeepHat LLM   │
-                    │ Local Inference │
-                    │ Classification  │
-                    └────────┬────────┘
-                             │
-                             ▼
-                    ┌─────────────────┐
-                    │ Planner / Router│
-                    │ Evidence        │
-                    │ Grounding       │
-                    │ Capability Check│
-                    └────────┬────────┘
-                             │
-     ┌───────┬───────┬───────┼───────┬───────┬───────┬───────┐
-     │       │       │       │       │       │       │       │
-     ▼       ▼       ▼       ▼       ▼       ▼       ▼       ▼
-   SQL     XSS    AuthZ   NoSQL  Injection Password  SAST    MITM
-  Agent   Agent   Agent   Agent    Agent    Agent    Agent   Agent
-     │       │       │       │       │       │       │       │
-     └───────┴───────┴───────┴───────┴───────┴───────┴───────┘
-                             │
-                             ▼
-                    Findings Aggregator
-                             │
-                             ▼
-                    Final Security Report
 
+```text
+                    Target URL
+                         │
+                         ▼
+                Hellhound Spider          (discovery — passive only)
+                         │
+                         ▼
+                Spider JSON Report
+                         │
+                         ▼
+                 SpiderExtractor          (raw crawl → token-budgeted context)
+                         │
+                         ▼
+                CandidateBuilder          (deterministic, zero LLM calls —
+                         │                 evidence → real testable candidates)
+                         ▼
+                     DeepHat LLM          (classification only: picks an agent
+                         │                 from a pre-built menu per candidate,
+                         │                 or declines — never invents endpoints)
+                         ▼
+              Planner / Router            (guardrail: grounding check,
+                         │                 capability-mismatch check,
+                         │                 fabricated-evidence check)
+                         ▼
+        ┌────────────────┼────────────────┐
+        ▼                ▼                ▼
+   SQL_AGENT         XSS_AGENT       AUTHZ_AGENT      ... (8 total, see below)
+        │                │                │
+        └────────────────┼────────────────┘
+                         ▼
+              Findings Aggregator
+                         │
+                         ▼
+                  Final Report          (reports/deephat/deephat_<target>.md)
+```
+
+---
 # Core Design Principle
 
 DeepHat is an **AI-guided validation system**, not an AI-only vulnerability detector.
