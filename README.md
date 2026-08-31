@@ -1,151 +1,722 @@
+# DeepHat — AI-Guided Web Vulnerability Validation Pipeline
+
 ![Python](https://img.shields.io/badge/Python-3.11-blue)
 ![Model](https://img.shields.io/badge/LLM-DeepHat-green)
 ![Inference](https://img.shields.io/badge/Inference-llama.cpp-orange)
+![Security](https://img.shields.io/badge/Security-Automated%20Validation-red)
 
-# DeepHat — AI-Guided Web Vulnerability Validation Pipeline
+DeepHat is an AI-guided web security testing framework that combines:
 
-An automated web security testing framework that combines **Hellhound
-Spider** (reconnaissance), a local **DeepHat** LLM (triage), and eight
-independent, purpose-built **validation agents** (active testing) into one
-pipeline — with a deterministic guardrail layer sitting between the AI's
-suggestions and anything actually being tested.
+- **Hellhound Spider** for automated reconnaissance and evidence gathering
+- **DeepHat V1 7B** for local AI-based vulnerability triage
+- **Deterministic candidate generation**
+- **Evidence-grounded AI classification**
+- **Planner-based routing and validation**
+- **Eight independent security validation agents**
+- **Centralized result aggregation and reporting**
 
-**Core design principle:** the AI never decides "this site is vulnerable"
-on its own. It only ever picks *which existing validation agent* should
-look at *which specific, already-confirmed-real* endpoint. Every finding
-that reaches the final report was produced by a real tool sending real
-requests to a real target — not by the AI guessing. A routing guardrail
-(the Planner) checks every AI decision against the actual crawl evidence
-before anything is allowed to execute, specifically to catch cases where
-the model's suggestion doesn't hold up: an endpoint that was never really
-discovered, a tool that doesn't actually handle that category of problem,
-or evidence cited that doesn't actually exist.
+The system is designed so that the AI does **not** decide that a target is vulnerable by itself.
+
+Instead, the AI only determines:
+
+> Which existing security validation agent should test which already-discovered candidate?
+
+The actual vulnerability validation is performed by dedicated security tools that interact with the target.
 
 ---
 
+# License Notice
+
+This project incorporates a  copy of **Hellhound Spider**
+(`hellhound/spider.py`), which is licensed under the **GNU General
+Public License v3.0 (GPL-3.0)**.
+
+Repository: https://github.com/project-hellhound-org/Hellhound-Spider
+---
+
 # Architecture
+                         Target URL
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │ Hellhound Spider│
+                    │ Automated Recon │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    Spider JSON Report
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │ SpiderExtractor │
+                    │ Evidence Filter │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │ CandidateBuilder│
+                    │ Deterministic   │
+                    │ Candidates      │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │   DeepHat LLM   │
+                    │ Local Inference │
+                    │ Classification  │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │ Planner / Router│
+                    │ Evidence        │
+                    │ Grounding       │
+                    │ Capability Check│
+                    └────────┬────────┘
+                             │
+     ┌───────┬───────┬───────┼───────┬───────┬───────┬───────┐
+     │       │       │       │       │       │       │       │
+     ▼       ▼       ▼       ▼       ▼       ▼       ▼       ▼
+   SQL     XSS    AuthZ   NoSQL  Injection Password  SAST    MITM
+  Agent   Agent   Agent   Agent    Agent    Agent    Agent   Agent
+     │       │       │       │       │       │       │       │
+     └───────┴───────┴───────┴───────┴───────┴───────┴───────┘
+                             │
+                             ▼
+                    Findings Aggregator
+                             │
+                             ▼
+                    Final Security Report
+
+# Core Design Principle
+
+DeepHat is an **AI-guided validation system**, not an AI-only vulnerability detector.
+
+The pipeline separates:
 
 ```text
-                    Target URL
-                         │
-                         ▼
-                Hellhound Spider          (discovery — passive only)
-                         │
-                         ▼
-                Spider JSON Report
-                         │
-                         ▼
-                 SpiderExtractor          (raw crawl → token-budgeted context)
-                         │
-                         ▼
-                CandidateBuilder          (deterministic - testable candidates)
-                         │                            
-                         ▼
-                     DeepHat LLM          (picks an agent -per candidate,
-                         │                  or declines — never invents endpoints)
-                         │                 
-                         ▼
-              Planner / Router            (guardrail: grounding check,
-                         │                 capability-mismatch check,
-                         │                 fabricated-evidence check)
-                         ▼
-        ┌────────────────┼────────────────┐
-        ▼                ▼                ▼
-   SQL_AGENT         XSS_AGENT       AUTHZ_AGENT      ... (8 total, see below)
-        │                │                │
-        └────────────────┼────────────────┘
-                         ▼
-              Findings Aggregator
-                         │
-                         ▼
-                  Final Report          (reports/deephat/deephat_<target>.md)
+Discovery
+    ↓
+Evidence
+    ↓
+Candidate Generation
+    ↓
+AI Classification
+    ↓
+Deterministic Validation
+    ↓
+Real Security Testing
+    ↓
+Reporting
+```
+
+The AI does not create arbitrary URLs, parameters, or vulnerabilities.
+
+The Planner verifies the AI's proposed action against the evidence produced by the crawler.
+
+This provides an additional guardrail against:
+
+* Fabricated endpoints
+* Unsupported vulnerability categories
+* Invalid agent selection
+* Evidence that does not actually exist
+* Testing candidates that were never discovered
+
+---
+
+# Validation Agents
+
+The project currently integrates eight security validation agents.
+
+| Agent                   | Purpose                                                                     | Underlying Tool                                    | Wrapper                       | Candidate Type      |
+| ----------------------- | --------------------------------------------------------------------------- | --------------------------------------------------- | ------------------------------ | -------------------- |
+| `SQL_AGENT`             | SQL Injection validation                                                    | `agents/sql_agent/sqli.py`                          | `agents/sqli_wrapper.py`      | Confirm-or-Reject     |
+| `XSS_AGENT`             | Cross-Site Scripting validation                                             | `agents/xss_agent/XSSDetector19.py`                 | `agents/xss_wrapper.py`       | Confirm-Only          |
+| `AUTHZ_AGENT`           | Authorization / access-control validation                                   | `agents/authz_agent/missing_authz_detector_v2.py`   | `agents/authz_wrapper.py`     | Confirm-or-Reject     |
+| `NOSQL_AGENT`           | NoSQL injection validation                                                  | `agents/nosql_agent/nosql.py`                       | `agents/nosql_wrapper.py`     | Confirm-or-Reject     |
+| `PARAM_INJECTION_AGENT` | SSRF, SSTI, command injection, path traversal and related injection testing | `agents/command_ Injection detector/injection_detector.py` | `agents/injection_wrapper.py` | Confirm-or-Reject     |
+| `PASSWORD_POLICY_AGENT` | Password policy enforcement testing                                         | `agents/password_checker agent/password_checker .py`| `agents/password_wrapper.py`  | Confirm-or-Reject     |
+| `SAST_AGENT`            | Static source-code security analysis and exposed Git/source analysis        | `agents/sast_agent/sast.py`                         | `agents/sast_wrapper.py`      | Confirm-or-Reject     |
+| `MITM_AGENT`            | TLS, cookie, CORS and security-header related checks                        | `agents/Passiveobserver5/Passive_observer5.py`      | `agents/mitm_wrapper.py`      | Confirm-or-Reject     |
+
+Each agent is an independent security testing component, dispatched
+directly from the Planner's routing decision — no agent depends on
+another agent's output or execution order.
+
+**Confirm-Only** (`XSS_AGENT`): the crawler evidence already suggests a
+concrete issue; the agent re-checks and confirms it with real browser
+execution.
+
+**Confirm-or-Reject** (the other seven): the crawler evidence only
+establishes that something is *worth testing* — the agent actively
+probes the target to determine whether a real issue exists. A "nothing
+found" result from one of these agents is a legitimate, expected
+outcome, not a failure.
+
+The wrappers provide a common interface so that the pipeline can
+execute different tools consistently.
+---
+
+# 1. Hellhound Spider
+
+Hellhound Spider performs automated reconnaissance against the target.
+
+Its role is discovery and evidence gathering. This includes active
+probing of known sensitive paths (e.g. checking for an exposed `.git`
+directory), active CORS auditing, GraphQL introspection probing, and,
+where enabled, form interaction — not purely passive observation.
+
+The crawler can collect information such as:
+
+* URLs
+* Endpoints
+* Query parameters
+* Forms
+* HTTP methods
+* Headers
+* Technology information
+* JavaScript references
+* Security-related observations
+* `robots.txt`
+* Potentially sensitive files
+* Other reconnaissance evidence
+
+The crawler output becomes the evidence source for the rest of the pipeline.
+
+```text
+Target
+  ↓
+Hellhound Spider
+  ↓
+Spider JSON
+```
+
+The pipeline does not directly allow the AI to invent targets outside this evidence.
+
+---
+
+# 2. Spider Extraction
+
+`processing/spider_extractor.py`
+
+The raw crawler output can contain a large amount of information.
+
+The SpiderExtractor converts the raw crawl into a more useful security-oriented context.
+
+Its responsibilities include:
+
+* Extracting relevant evidence
+* Filtering unnecessary information
+* Normalizing crawler data
+* Preparing information for the LLM
+* Managing the context/token budget
+
+```text
+Raw Spider Report
+        ↓
+SpiderExtractor
+        ↓
+Security-Relevant Evidence
 ```
 
 ---
 
-# The Eight Validation Agents
+# 3. Candidate Builder
 
-Each agent is a real, independent security tool — not an AI — that tests
-for exactly one category of vulnerability once the Planner has approved a
-candidate for it.
+`pipeline/candidate_builder.py`
 
-| Agent | Tests for | Wrapper |
-|---|---|---|
-| `SQL_AGENT` | SQL Injection | `agents/sqli_wrapper.py` |
-| `XSS_AGENT` | Cross-Site Scripting (browser-validated, confirm-only) | `agents/xss_wrapper.py` |
-| `AUTHZ_AGENT` | Broken access control / missing authorization | `agents/authz_wrapper.py` |
-| `NOSQL_AGENT` | NoSQL injection (MongoDB-style operator abuse) | `agents/nosql_wrapper.py` |
-| `PARAM_INJECTION_AGENT` | SSRF, SSTI, command injection, path traversal, open redirect | `agents/injection_wrapper.py` |
-| `PASSWORD_POLICY_AGENT` | Weak/missing password policy enforcement | `agents/password_wrapper.py` |
-| `SOURCE_AUDIT_AGENT` | Exposed `.git` source + static secret/taint analysis | `agents/source_auditor_wrapper.py` |
-| `MITM_AGENT` | Passive TLS/cookie/CORS/header-level issues | `agents/mitm_wrapper.py` |
+The CandidateBuilder converts crawler evidence into deterministic, testable candidates.
 
-There is no separate `COMMAND_INJECTION_AGENT` (handled by
-`PARAM_INJECTION_AGENT`) or standalone `IDOR_AGENT` (handled by
-`AUTHZ_AGENT`/`SQL_AGENT` depending on the evidence)..
+For example:
+
+```text
+Endpoint:
+    /search
+
+Method:
+    GET
+
+Parameter:
+    q
+
+Evidence:
+    Parameter observed during crawl
+```
+
+This can become a candidate such as:
+
+```text
+Candidate:
+    URL = /search
+    Parameter = q
+    Category = injection-related
+```
+
+The important property is that the candidate originates from actual crawler evidence.
 
 ---
 
-# Workflow
+# 4. DeepHat Classification
 
-## 1. Reconnaissance
+DeepHat runs locally through `llama.cpp`.
 
-A target URL is provided by the user. `pipeline/crawler.py` launches
-**Hellhound Spider**, which performs passive discovery — endpoints,
-parameters, forms, headers, technology stack, exposed sensitive files,
-robots.txt, secrets — and saves the raw report under `reports/spiders/`.
+The model receives the candidate information and determines which validation agent is appropriate.
 
-## 2. Extraction
+Conceptually:
 
-`processing/spider_extractor.py` filters the (often very large) raw crawl
-down to security-relevant evidence and fits it within the LLM's token
-budget, trimming least-critical fields first.
+```text
+Candidate
+    ↓
+DeepHat
+    ↓
+Agent Selection
+```
 
-## 3. Candidate Building
+For example:
 
-`pipeline/candidate_builder.py` deterministically converts extracted
-evidence into a list of real, testable candidates
+```text
+Candidate → SQL_AGENT
+```
 
-## 4. Classification
+or:
 
-DeepHat (running locally via `llama.cpp`) reviews the candidate list and,
-for each one, either picks an agent  or declines with a reason. 
-It cannot select an agent outside the menu — any
-attempt to do so is clamped to "no agent" before it ever reaches routing.
+```text
+Candidate → XSS_AGENT
+```
 
-## 5. Routing & Validation
+or:
 
-`pipeline/planner.py` re-checks every one of DeepHat's choices against the
-real evidence before allowing it through: was the endpoint actually
-discovered, does the chosen agent's capability actually match the
-candidate's category, does any cited evidence actually exist. Candidates
-that fail these checks, or that no agent covers, land in an explicit
-`UNSUPPORTED` bucket — visible in the final report, not silently dropped.
+```text
+Candidate → NO_AGENT
+```
 
-## 6. Active Testing
+The model does not directly execute security tools.
 
-Approved candidates are dispatched to their real agent
-(`pipeline/executor.py`), which sends genuine requests/payloads against
-the actual target and returns an honest result — including "tested,
-nothing found," which is a valid, distinct outcome from "the agent
-failed to run at all."
+---
 
-## 7. Reporting
+# 5. Planner / Router
 
-`storage/report_manager.py` collects every agent's results into one
-combined, human-readable report, saved to `reports/deephat/`. Each
-agent's own raw output is also kept separately under `agents_output/`.
+`pipeline/planner.py`
+
+The Planner is the deterministic guardrail layer between the AI and the security agents.
+
+It checks whether the proposed AI action is actually valid.
+
+Important checks include:
+
+### Endpoint grounding
+
+Was the endpoint actually discovered by the crawler?
+
+### Capability validation
+
+Does the selected agent actually support the vulnerability category?
+
+### Evidence validation
+
+Does the evidence referenced by the model actually exist?
+
+### Candidate validation
+
+Is the candidate a legitimate testable candidate?
+
+Conceptually:
+
+```text
+DeepHat Decision
+       ↓
+     Planner
+       ↓
+ ┌─────┴─────┐
+ │           │
+Valid      Invalid
+ │           │
+ ▼           ▼
+Execute   Reject / Unsupported
+```
+
+This prevents the LLM from directly controlling arbitrary security testing.
+
+---
+
+# 6. Executor
+
+`pipeline/executor.py`
+
+The Executor dispatches approved candidates to the appropriate validation agent.
+
+```text
+Planner
+   ↓
+Executor
+   ↓
+Wrapper
+   ↓
+Security Agent
+   ↓
+Target
+```
+
+The Executor also normalizes the returned result so that different agents can participate in the same pipeline.
+
+A useful distinction is maintained between:
+
+```text
+Agent executed + vulnerability found
+```
+
+```text
+Agent executed + nothing found
+```
+
+and:
+
+```text
+Agent failed / could not execute
+```
+
+These are different outcomes and should not be treated as the same result.
+
+---
+
+# 7. SQL Injection Agent
+
+`agents/sql_agent/sqli.py`
+
+The SQL agent performs active SQL injection validation.
+
+It can test discovered parameters using SQL injection techniques and analyze responses for evidence of injection.
+
+The wrapper is:
+
+```text
+agents/sqli_wrapper.py
+```
+
+Pipeline:
+
+```text
+Crawler Evidence
+      ↓
+CandidateBuilder
+      ↓
+DeepHat
+      ↓
+Planner
+      ↓
+SQL_AGENT
+      ↓
+SQLi Result
+```
+
+---
+
+# 8. XSS Agent
+
+`agents/xss_agent/XSSDetector19.py`
+
+The XSS agent is responsible for Cross-Site Scripting validation.
+
+The wrapper is:
+
+```text
+agents/xss_wrapper.py
+```
+
+The agent can perform active testing and use browser-oriented validation where applicable.
+
+---
+
+# 9. Authorization Agent
+
+`agents/authz_agent/missing_authz_detector_v2.py`
+
+The authorization agent checks for access-control problems and missing authorization controls.
+
+The wrapper is:
+
+```text
+agents/authz_wrapper.py
+```
+
+This category covers situations where an endpoint or resource may be accessible without the required authorization.
+
+---
+
+# 10. NoSQL Injection Agent
+
+`agents/nosql_agent/nosql.py`
+
+The NoSQL agent tests for NoSQL injection conditions, particularly MongoDB-style operator abuse.
+
+Supporting dataset:
+
+```text
+agents/nosql_agent/dataset.py
+```
+
+Wrapper:
+
+```text
+agents/nosql_wrapper.py
+```
+
+Pipeline:
+
+```text
+Candidate
+    ↓
+DeepHat
+    ↓
+Planner
+    ↓
+NOSQL_AGENT
+    ↓
+Validation
+```
+
+---
+
+# 11. Parameter Injection Agent
+
+`agents/command_ Injection detector/injection_detector.py`
+
+This functionality is exposed through:
+
+```text
+agents/injection_wrapper.py
+```
+
+The injection validation layer covers multiple injection-oriented categories, including:
+
+* SSRF
+* SSTI
+* Command injection
+* Path traversal
+* Open redirect
+
+The pipeline uses the appropriate candidate category and dispatches it through the injection wrapper.
+
+---
+
+# 12. Password Policy Agent
+
+The password policy validation functionality is implemented through:
+
+```text
+agents/password_checker agent/password_checker .py
+```
+
+and exposed through:
+
+```text
+agents/password_wrapper.py
+```
+
+It focuses on password-policy enforcement and related account-creation behavior.
+
+---
+
+# 13. SAST Agent
+
+`agents/sast_agent/sast.py`
+
+The SAST agent performs **Static Application Security Testing**.
+
+Unlike the active web agents, SAST is primarily concerned with source code rather than sending vulnerability payloads to individual HTTP parameters.
+
+It can analyze source code for security-relevant patterns such as:
+
+* Hardcoded secrets
+* Weak cryptography
+* Injection-prone code
+* Configuration weaknesses
+* Logging weaknesses
+* Dependency-related issues
+* Static source-level security patterns
+
+The SAST wrapper is:
+
+```text
+agents/sast_wrapper.py
+```
+
+The agent can also resolve a target website's exposed `.git` repository when such exposure exists, reconstruct source material, and then analyze the recovered source.
+
+Therefore:
+
+```text
+Website
+   ↓
+Exposed .git check
+   ↓
+Git recovery
+   ↓
+Source extraction
+   ↓
+Static analysis
+   ↓
+SAST findings
+```
+
+A normal website without an exposed `.git` repository can legitimately produce a skipped/no-source outcome rather than a SAST finding.
+
+---
+
+# 14. MITM Agent
+
+`agents/Passiveobserver5/Passive_observer5.py`
+
+The MITM-related validation layer focuses on passive web-security properties such as:
+
+* TLS configuration
+* Cookie security
+* CORS behavior
+* Security headers
+* WebSocket, GraphQL, and OpenAPI exposure
+* Other transport/browser security observations
+
+The wrapper is:
+
+```text
+agents/mitm_wrapper.py
+```
+
+It complements the active vulnerability-testing agents by checking security properties that do not necessarily require injection payloads.
+
+---
+
+# Reporting
+
+The pipeline combines validation results into a unified report.
+
+The reporting layer is handled by:
+
+```text
+storage/report_manager.py
+```
+
+The final pipeline result can distinguish between:
+
+```text
+Confirmed Finding
+Possible Finding
+Tested — Nothing Found
+Unsupported
+Skipped
+Agent Failure
+```
+
+This distinction is important because:
+
+> No vulnerability found is not the same as the agent failing to run.
+
+---
+
+# Local Runtime Files
+
+Large and generated files are intentionally kept outside the Git repository.
+
+The project `.gitignore` excludes:
+
+```text
+models/
+reports/
+agents_output/
+__pycache__/
+*.pyc
+```
+
+Therefore the following are local/runtime assets:
+
+```text
+models/
+    deephat-v1-7b-q4_k_m.gguf
+
+reports/
+    ...
+
+agents_output/
+    ...
+```
+
+These files are **not required to be committed to the Git repository**.
+
+The DeepHat GGUF model is intentionally kept locally because of its large size.
+
+---
+
+# DeepHat Model
+
+The project uses the DeepHat V1 7B model in GGUF format.
+
+Model:
+
+[https://huggingface.co/VISHNUDHAT/DeepHat-V1-7B-Q4_K_M-GGUF](https://huggingface.co/VISHNUDHAT/DeepHat-V1-7B-Q4_K_M-GGUF)
+
+The model is loaded locally using `llama.cpp`.
+
+The model file itself is not included in this repository.
+
+---
+
+# llama.cpp
+
+Local inference is provided by `llama.cpp`.
+
+Repository:
+
+[https://github.com/ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp)
+
+The project communicates with the local DeepHat model server through the configured server endpoint.
 
 ---
 
 # Setup
 
-## 1. Start the DeepHat Model Server
+## 1. Install Python Dependencies
 
-**Windows**
+Create and activate a virtual environment if desired.
+
+Then install the project requirements:
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## 2. Obtain the DeepHat Model
+
+Download the DeepHat GGUF model separately.
+
+The model should be placed locally under:
+
+```text
+models/
+```
+
+For example:
+
+```text
+models/
+└── deephat-v1-7b-q4_k_m.gguf
+```
+
+The model directory is ignored by Git.
+
+---
+
+# 3. Start llama.cpp
+
+Navigate to the llama.cpp directory.
+
+### Windows
+
+Example:
 
 ```powershell
-cd <project-root>\llama.cpp
+cd llama.cpp
 
 .\llama-server.exe `
   --hf-repo VISHNUDHAT/DeepHat-V1-7B-Q4_K_M-GGUF `
@@ -158,23 +729,27 @@ cd <project-root>\llama.cpp
   --parallel 1
 ```
 
-**Linux/macOS**
+Wait for the model server to finish loading.
 
-Use your own `llama-server` build with the same flags and update
-`SERVER_URL` and `HEALTH_URL` in `config.py` if the server runs on a
-different host or port.
+If the model server runs on another host or port, update the appropriate configuration in:
 
-Wait until the model finishes loading before continuing.
+```text
+config.py
+```
 
-## 2. Launch the Application
+---
 
-Open a second terminal and run:
+# 4. Launch DeepHat
+
+Open a second terminal:
 
 ```bash
 python chat.py
 ```
 
-You will see:
+The application provides the main interaction interface.
+
+Example:
 
 ```text
 ============================================================
@@ -188,41 +763,199 @@ Choose Mode
 3. Exit
 ```
 
-### Available Modes
+---
 
-**Normal Chat** — interact directly with DeepHat without a scan.
+# Website Security Analysis
 
-**Website Security Analysis** — runs the full pipeline described above:
-crawl → extract → build candidates → classify → route → validate →
-report. Findings are saved to `reports/deephat/`; each agent's own raw
-output is saved separately under `agents_output/`.
+Selecting Website Security Analysis starts the complete pipeline:
+
+```text
+Target URL
+    ↓
+Hellhound Spider
+    ↓
+Spider JSON
+    ↓
+SpiderExtractor
+    ↓
+CandidateBuilder
+    ↓
+DeepHat Classification
+    ↓
+Planner Validation
+    ↓
+Executor
+    ↓
+Security Agent
+    ↓
+Result Aggregation
+    ↓
+Final Report
+```
 
 ---
-# Acknowledgements
 
-This project builds upon several open-source projects and technologies.
+# Security Testing Notice
+
+This project is intended for authorized security testing.
+
+Only test:
+
+* Systems you own
+* Applications you are explicitly authorized to assess
+* Deliberately vulnerable security-training applications
+* Environments where you have written permission to perform testing
+
+Do not use the active validation agents against systems without authorization.
+
+---
+
+# Project Structure
+
+```text
+gguf/
+│
+├── agents/
+│   ├── authz_agent/
+│   ├── command_ Injection detector/
+│   ├── nosql_agent/
+│   ├── Passiveobserver5/
+│   ├── password_checker agent/
+│   ├── sast_agent/
+│   ├── sql_agent/
+│   ├── xss_agent/
+│   │
+│   ├── authz_wrapper.py
+│   ├── injection_wrapper.py
+│   ├── mitm_wrapper.py
+│   ├── nosql_wrapper.py
+│   ├── password_wrapper.py
+│   ├── sast_wrapper.py
+│   ├── sqli_wrapper.py
+│   └── xss_wrapper.py
+│
+├── context/
+│
+├── hellhound/
+│   └── spider.py
+│
+├── pipeline/
+│   ├── agent_capabilities.py
+│   ├── agent_report_paths.py
+│   ├── candidate_builder.py
+│   ├── crawler.py
+│   ├── executor.py
+│   └── planner.py
+│
+├── processing/
+│   ├── classification_parser.py
+│   ├── output_parser.py
+│   └── spider_extractor.py
+│
+├── storage/
+│   └── report_manager.py
+│
+├── chat.py
+├── config.py
+├── deephat.py
+├── requirements.txt
+│
+├── models/              # Local — not committed
+├── reports/             # Generated — not committed
+└── agents_output/       # Generated — not committed
+```
+
+---
+
+# Design Summary
+
+DeepHat separates AI reasoning from security validation.
+
+The AI performs:
+
+```text
+Classification
+```
+
+The deterministic pipeline performs:
+
+```text
+Grounding
+Routing
+Capability Validation
+Candidate Validation
+```
+
+The security agents perform:
+
+```text
+Actual Security Testing
+```
+
+The reporting layer performs:
+
+```text
+Result Aggregation
+```
+
+Therefore the overall architecture is:
+
+```text
+        AI
+        │
+        │ classification only
+        ▼
+   Deterministic
+      Planner
+        │
+        │ validated decision
+        ▼
+ Real Security Agents
+        │
+        │ actual testing
+        ▼
+    Findings
+        │
+        ▼
+     Reports
+```
+
+This architecture is intended to reduce hallucinated vulnerability claims while allowing a local LLM to intelligently coordinate multiple specialized security-testing agents.
+
+---
+
+# Acknowledgements
 
 ## Hellhound Spider
 
-Hellhound provides website crawling and passive reconnaissance
-capabilities, including endpoint discovery, technology fingerprinting,
-parameter extraction, JavaScript analysis, and security header collection.
+Hellhound Spider provides this project's automated reconnaissance and
+evidence-gathering capabilities — a fully autonomous crawler that
+performs active discovery (including probing known sensitive paths,
+CORS auditing, and GraphQL introspection), not purely passive traffic
+observation.
+
+Repository: https://github.com/project-hellhound-org/Hellhound-Spider
+
+License: GNU General Public License v3.0 (GPL-3.0)
+
+This project includes and has modified a copy of Hellhound Spider
+(`hellhound/spider.py`). See the License Notice at the top of this
+document.
 
 ## DeepHat
 
-AI classification is powered by the **DeepHat** Large Language Model
-running locally in GGUF format.
+AI classification is powered by the DeepHat Large Language Model running locally in GGUF format.
 
-**Model:** https://huggingface.co/VISHNUDHAT/DeepHat-V1-7B-Q4_K_M-GGUF
+Model:
+
+[https://huggingface.co/VISHNUDHAT/DeepHat-V1-7B-Q4_K_M-GGUF](https://huggingface.co/VISHNUDHAT/DeepHat-V1-7B-Q4_K_M-GGUF)
 
 ## llama.cpp
 
-Efficient local inference is provided by **llama.cpp**.
+Local inference is provided by llama.cpp:
 
-**Repository:** https://github.com/ggml-org/llama.cpp
+[https://github.com/ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp)
 
 ## Validation Agents
 
-Each of the eight validation agents wraps an independently-built,
-purpose-specific security testing tool, integrated with real-target
-testing, evidence-grounded routing, and normalized result reporting.
+The project integrates multiple purpose-built security validation tools through a common wrapper and execution architecture.
